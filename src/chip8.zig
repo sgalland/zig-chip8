@@ -1,6 +1,8 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 
+const USER_MEMORY_ADDRESS = 0x200;
+
 const Chip8 = struct {
     allocator: Allocator,
     data: []u8,
@@ -20,7 +22,10 @@ const Chip8 = struct {
         self.allocator = allocator;
     }
 
-    pub fn loadRom(filename: []const u8) void {
-        _ = filename;
+    pub fn loadRom(self: Chip8, filename: []const u8) void {
+        const stat = try std.fs.cwd().statFile(filename);
+        const data = try std.fs.cwd().readFileAlloc(self.allocator, filename, stat.size);
+
+        std.mem.copyForwards(u8, self.memory[USER_MEMORY_ADDRESS..], data);
     }
 };
