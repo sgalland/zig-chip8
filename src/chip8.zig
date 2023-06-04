@@ -59,14 +59,14 @@ pub const Chip8 = struct {
         std.mem.copyForwards(u8, self.memory[USER_MEMORY_ADDRESS..], data);
     }
 
-    pub fn cycle(self: *Self, current_time: u64) void {
-        // Timers decrement at a rate of 60 timers per second (every 16.66666666ms).
+    pub fn cycle(self: *Self, current_timestamp: u64) void {
+        // Timers decrement at a rate of 60 times per second (every 16.66666666ms).
         // If value of the timer is greater than 0, decrement it
-        if (current_time - self.last_timestamp > 16_666_666) {
+        if (current_timestamp - self.last_timestamp > 16_666_666) {
             if (self.delay_timer > 0) self.delay_timer -= 1;
             if (self.sound_timer > 0) self.sound_timer -= 1;
 
-            self.last_timestamp = current_time;
+            self.last_timestamp = current_timestamp;
         }
 
         // Read instructions, each instruction is two bytes long.
@@ -85,5 +85,3 @@ fn chip8_inst_cls() void {}
 
 /// Return from a subroutine. Pops the value at the top of the stack (indicated by the stack pointer SP) and puts it in PC.
 fn chip8_inst_ret() void {}
-
-
