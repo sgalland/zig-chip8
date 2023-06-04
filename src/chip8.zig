@@ -5,6 +5,7 @@ const Allocator = std.mem.Allocator;
 // On ETI machines memory starts at 0x600.
 const USER_MEMORY_ADDRESS = 0x200;
 const ETI_USER_MEMORY_ADDRESS = 0x600;
+const FONT_ADDRESS = 0x50;
 
 const FONTS = [_]u8{
     0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
@@ -29,6 +30,7 @@ pub const Chip8 = struct {
     const Self = @This();
 
     allocator: Allocator,
+    random: std.rand.Random,
 
     // CHIP8 internals
     memory: [4096]u8 = [_]u8{0} ** 4096,
@@ -45,17 +47,20 @@ pub const Chip8 = struct {
     // Emulator internals
     last_timestamp: u64 = 0,
 
-    pub fn init(allocator: Allocator) Chip8 {
+    pub fn init(allocator: Allocator, random: std.rand.Random) Chip8 {
         return Chip8{
             .allocator = allocator,
+            .random = random,
         };
     }
 
-    // Load a ROM into memory.
+    // Clears memory and loads ROM into memory.
     pub fn loadRom(self: *Self, filename: []const u8) void {
         const stat = try std.fs.cwd().statFile(filename);
         const data = try std.fs.cwd().readFileAlloc(self.allocator, filename, stat.size);
 
+        @memset(self.memory, 0);
+        std.mem.copyForwards(u8, self.memory[FONT_ADDRESS..], FONTS);
         std.mem.copyForwards(u8, self.memory[USER_MEMORY_ADDRESS..], data);
     }
 
