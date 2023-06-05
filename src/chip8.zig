@@ -175,7 +175,7 @@ pub const Chip8 = struct {
                         }
                     }
                 },
-                // Use std.debug.print(">> code={}, x={}, y={}, n={}, nn={}, nnn={}\n", .{ code, x, y, n, nn, nnn })
+                // Use std.debug.print(">> code={X}, x={X}, y={X}, n={X}, nn={X}, nnn={X}\n", .{ code, x, y, n, nn, nnn })
                 // to determine what instructions are missing.
                 else => unreachable,
             }
