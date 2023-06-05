@@ -12,6 +12,7 @@ pub fn main() !void {
     const random = random_generator.random();
 
     var instance = chip8.Chip8.init(allocator, random);
+    try instance.loadRom("IBM Logo.ch8");
 
     while (true) {
         const time_now = try std.time.Instant.now();

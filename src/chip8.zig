@@ -3,6 +3,7 @@ const Allocator = std.mem.Allocator;
 
 // Normally user programs are loaded at address 0x200.
 // On ETI machines memory starts at 0x600.
+// NOTE: Does anyone try to even emulate ETI?
 const USER_MEMORY_ADDRESS = 0x200;
 const ETI_USER_MEMORY_ADDRESS = 0x600;
 const FONT_ADDRESS = 0x50;
@@ -38,7 +39,7 @@ pub const Chip8 = struct {
     delay_timer: u8 = 0,
     sound_timer: u8 = 0,
     index_register: u16 = 0,
-    program_counter: u16 = 0,
+    program_counter: u16 = USER_MEMORY_ADDRESS,
     stack_pointer: u16 = 0,
     stack: [16]u16 = [_]u16{0} ** 16,
     keyboard: [16]u8 = [_]u8{0} ** 16,
@@ -54,14 +55,16 @@ pub const Chip8 = struct {
         };
     }
 
-    // Clears memory and loads ROM into memory.
-    pub fn loadRom(self: *Self, filename: []const u8) void {
+    // Clears memory and loads ROM into memory. Sets the Program Counter to the start of user addressable memory.
+    pub fn loadRom(self: *Self, filename: []const u8) !void {
         const stat = try std.fs.cwd().statFile(filename);
         const data = try std.fs.cwd().readFileAlloc(self.allocator, filename, stat.size);
 
-        @memset(self.memory, 0);
-        std.mem.copyForwards(u8, self.memory[FONT_ADDRESS..], FONTS);
+        @memset(&self.memory, 0);
+        std.mem.copyForwards(u8, self.memory[FONT_ADDRESS..], &FONTS);
         std.mem.copyForwards(u8, self.memory[USER_MEMORY_ADDRESS..], data);
+
+        self.program_counter = USER_MEMORY_ADDRESS;
     }
 
     pub fn cycle(self: *Self, current_timestamp: u64) void {
@@ -72,21 +75,70 @@ pub const Chip8 = struct {
             if (self.sound_timer > 0) self.sound_timer -= 1;
 
             self.last_timestamp = current_timestamp;
-        }
 
-        // Read instructions, each instruction is two bytes long.
+            // Each instruction is two bytes long.
+            const instruction = @as(u16, self.memory[self.program_counter]) << 8 | self.memory[self.program_counter + 1];
+            self.program_counter += 2;
+
+            // Decode instructions
+            const code = @as(u16, instruction) & 0xF000;
+            const x = @as(u16, instruction) & 0x0F00 >> 8;
+            const y = @as(u16, instruction) & 0x00F0 >> 4;
+            const n = @as(u16, instruction) & 0x000F;
+            const nn = @as(u16, instruction) & 0x00FF;
+            const nnn = @as(u16, instruction) & 0x0FFF;
+
+            // The comments below are taken from Cowgod's Chip-8 technical reference
+            // See: http://devernay.free.fr/hacks/chip8/C8TECH10.HTM#00E0
+            switch (code) {
+                0x0000 => switch (n) {
+                    // 00E0 - CLS
+                    0x00 => @memset(&self.video, 0),
+                    // 00EE - RET
+                    0x0E => {
+                        self.program_counter = self.stack[self.stack_pointer];
+                        self.stack_pointer -= 1;
+                    },
+                    else => unreachable,
+                },
+                // 1nnn - JP addr
+                0x1000 => self.program_counter = nnn,
+                // 2nnn - CALL addr
+                0x2000 => {
+                    self.stack_pointer += 1;
+                    self.stack[self.stack_pointer] = self.program_counter;
+                    self.program_counter = nnn;
+                },
+                // 3xkk - Skip next instruction V[x] = kk
+                0x3000 => {
+                    if (self.registers[x] == nn) {
+                        self.program_counter += 2;
+                    }
+                },
+                // 4xkk - Skip next instruction V[x] != kk
+                0x4000 => {
+                    if (self.registers[x] != nn) {
+                        self.program_counter += 2;
+                    }
+                },
+                // 5xy0 - Skip next instruction Vx = Vy
+                0x5000 => {
+                    if (self.registers[x] == self.registers[y]) {
+                        self.program_counter += 2;
+                    }
+                },
+                // 6xkk - Set register Vx = kk
+                0x6000 => {
+                    const x_u8: u8 = @intCast(u8, x);
+                    self.registers[x_u8] = @intCast(u8, nn);
+                },
+                // 7xkk - Add value to register
+                0x7000 => {
+                    const x_u8: u8 = @intCast(u8, x);
+                    self.registers[x_u8] += @intCast(u8, nn);
+                },
+                else => unreachable,
+            }
+        }
     }
 };
-
-fn dispatch(code: u8) void {
-    switch (code) {
-        0x00E0 => chip8_inst_cls(),
-        0x00EE => chip8_inst_ret(),
-    }
-}
-
-/// Clear the display by setting all pixels to ‘off’.
-fn chip8_inst_cls() void {}
-
-/// Return from a subroutine. Pops the value at the top of the stack (indicated by the stack pointer SP) and puts it in PC.
-fn chip8_inst_ret() void {}
