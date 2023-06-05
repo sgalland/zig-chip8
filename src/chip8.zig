@@ -145,18 +145,17 @@ pub const Chip8 = struct {
 
                 // DXYN - Display n-byte sprite at memory location I at (Vx, Vy), set VF = collision.
                 0xD000 => {
-                    const x_pos = self.memory[x];
-                    const y_pos = self.memory[y];
+                    const x_pos = self.memory[x] % DISPLAY_WIDTH;
+                    const y_pos = self.memory[y] % DISPLAY_HEIGHT;
 
-                    self.memory[0x0F] = 0; // clear the collision flag
+                    self.registers[0x0F] = 0; // clear the collision flag
 
                     for (0..n) |index| {
                         const pixel = self.memory[self.index_register + index];
-
                         const cy = y_pos + index;
 
                         for (0..8) |bit| {
-                            const cx = (x_pos + index);
+                            const cx = (x_pos + index) % DISPLAY_WIDTH;
                             const current_color = self.video[cy * DISPLAY_WIDTH + cx];
                             const mask = (0x01 << 7) - bit;
                             const color = pixel & mask;

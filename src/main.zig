@@ -53,9 +53,10 @@ pub fn main() !void {
         // Need to draw the pixels
         // See: https://github.com/sgalland/SAGE-CPP/blob/master/src/backend/sdl2/Graphics.cpp
 
-        // _ = c.SDL_SetRenderTarget(renderer, nullptr);
-        // _ = c.SDL_SetRenderDrawColor(renderer, 0x00, 0x00, 0x00, 0x00);
-        // _=c.	SDL_RenderCopy(renderer, texture->getSDLTexture(), nullptr, &destSize);
+        _ = c.SDL_SetRenderTarget(renderer, null);
+        _ = c.SDL_SetRenderDrawColor(renderer, 0x00, 0x00, 0x00, 0x00);
+        //TODO: Need to implement texture to draw to
+        //_ = c.(renderer, texture->getSDLTexture(), nullptr, &destSize);
         _ = c.SDL_RenderPresent(renderer);
     }
 }
