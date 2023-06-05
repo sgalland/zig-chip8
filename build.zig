@@ -25,8 +25,8 @@ pub fn build(b: *std.Build) void {
     });
 
     // Add the SDL library for Windows.
-    if (target.os_tag == std.Target.Os.Tag.windows) {
-        exe.addIncludePath("libs\\SDL2-2.26.4");
+    if (target.getOsTag() == std.Target.Os.Tag.windows) {
+        exe.addIncludePath("libs\\SDL2-2.26.4\\include");
         exe.addLibraryPath("libs\\SDL2-2.26.4\\lib\\x64");
         b.installBinFile("libs\\SDL2-2.26.4\\lib\\x64\\SDL2.dll", "SDL2.dll");
         exe.linkSystemLibrary("sdl2");

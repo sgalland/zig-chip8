@@ -8,6 +8,9 @@ const USER_MEMORY_ADDRESS = 0x200;
 const ETI_USER_MEMORY_ADDRESS = 0x600;
 const FONT_ADDRESS = 0x50;
 
+pub const DISPLAY_WIDTH = 64;
+pub const DISPLAY_HEIGHT = 32;
+
 const FONTS = [_]u8{
     0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
     0x20, 0x60, 0x20, 0x20, 0x70, // 1
@@ -43,7 +46,7 @@ pub const Chip8 = struct {
     stack_pointer: u16 = 0,
     stack: [16]u16 = [_]u16{0} ** 16,
     keyboard: [16]u8 = [_]u8{0} ** 16,
-    video: [64 * 32]u32 = [_]u32{0} ** (64 * 32),
+    video: [DISPLAY_WIDTH * DISPLAY_HEIGHT]u32 = [_]u32{0} ** (DISPLAY_WIDTH * DISPLAY_HEIGHT),
 
     // Emulator internals
     last_timestamp: u64 = 0,
@@ -60,7 +63,7 @@ pub const Chip8 = struct {
         const stat = try std.fs.cwd().statFile(filename);
         const data = try std.fs.cwd().readFileAlloc(self.allocator, filename, stat.size);
 
-        @memset(&self.memory, 0);
+        // @memset(&self.memory, 0);
         std.mem.copyForwards(u8, self.memory[FONT_ADDRESS..], &FONTS);
         std.mem.copyForwards(u8, self.memory[USER_MEMORY_ADDRESS..], data);
 
@@ -137,6 +140,43 @@ pub const Chip8 = struct {
                     const x_u8: u8 = @intCast(u8, x);
                     self.registers[x_u8] += @intCast(u8, nn);
                 },
+                // Annn - LD. Set I = nnn.
+                0xA000 => self.index_register = nnn,
+
+                // DXYN - Display n-byte sprite at memory location I at (Vx, Vy), set VF = collision.
+                0xD000 => {
+                    const x_pos = self.memory[x];
+                    const y_pos = self.memory[y];
+
+                    self.memory[0x0F] = 0; // clear the collision flag
+
+                    for (0..n) |index| {
+                        const pixel = self.memory[self.index_register + index];
+
+                        const cy = y_pos + index;
+
+                        for (0..8) |bit| {
+                            const cx = (x_pos + index);
+                            const current_color = self.video[cy * DISPLAY_WIDTH + cx];
+                            const mask = (0x01 << 7) - bit;
+                            const color = pixel & mask;
+
+                            if (color > 0) {
+                                if (current_color > 0) {
+                                    self.video[cy * DISPLAY_WIDTH + cx] = 0;
+                                    self.registers[0x0F] = 1;
+                                } else {
+                                    self.video[cy * DISPLAY_WIDTH + cx] = 1;
+                                }
+                            }
+
+                            if (cx == DISPLAY_WIDTH - 1) break;
+                            if (cy == DISPLAY_HEIGHT - 1) break;
+                        }
+                    }
+                },
+                // Use std.debug.print(">> code={}, x={}, y={}, n={}, nn={}, nnn={}\n", .{ code, x, y, n, nn, nnn })
+                // to determine what instructions are missing.
                 else => unreachable,
             }
         }
