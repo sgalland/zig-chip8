@@ -7,10 +7,14 @@ const chip8 = @import("chip8.zig");
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
-    const args = try std.process.argsAlloc(allocator);
-    defer std.process.argsFree(allocator, args);
+    defer {
+        const status = gpa.deinit();
+        if (status == .leak) std.testing.expect(false) catch @panic("GeneralPurposeAllocator deinit failed");
+    }
 
     var cmd_args = try std.process.argsWithAllocator(allocator);
+    defer cmd_args.deinit();
+
     while (cmd_args.next()) |arg| {
         std.debug.print("Command line arg: {s}\n", .{arg});
     }
@@ -32,6 +36,10 @@ pub fn main() !void {
     defer c.SDL_DestroyRenderer(renderer);
     _ = c.SDL_RenderSetScale(renderer, 4, 4);
     _ = c.SDL_RenderSetLogicalSize(renderer, 640, 480);
+
+    // Setup SDL Texture and Surface
+    const surface = c.SDL_CreateRGBSurface(0, chip8.DISPLAY_WIDTH, chip8.DISPLAY_HEIGHT, 32, 0, 0, 0, 0);
+    defer c.SDL_FreeSurface(surface);
 
     // Start emulation
     var instance = chip8.Chip8.init(allocator, random);
@@ -56,11 +64,12 @@ pub fn main() !void {
         _ = c.SDL_RenderClear(renderer);
         _ = c.SDL_SetRenderTarget(renderer, null);
         _ = c.SDL_SetRenderDrawColor(renderer, 0x00, 0x00, 0x00, 0x00);
-        const surface = c.SDL_CreateRGBSurface(0, chip8.DISPLAY_WIDTH, chip8.DISPLAY_HEIGHT, 32, 0, 0, 0, 0);
-        defer c.SDL_FreeSurface(surface);
 
-        const texture = c.SDL_CreateTexture(renderer, surface.*.format.*.format, c.SDL_TEXTUREACCESS_STREAMING, chip8.DISPLAY_WIDTH, chip8.DISPLAY_HEIGHT);
-        defer c.SDL_DestroyTexture(texture);
+        const num: usize = @intCast(usize, surface.*.pitch * surface.*.h);
+        const video_memory = @ptrCast(?*anyopaque, &instance.video);
+        _ = c.memcpy(surface.*.pixels, video_memory, num);
+
+        const texture = c.SDL_CreateTextureFromSurface(renderer, surface);
 
         const destRect: c.SDL_Rect = c.SDL_Rect{
             .x = 0,
@@ -69,7 +78,8 @@ pub fn main() !void {
             .h = chip8.DISPLAY_HEIGHT,
         };
         _ = c.SDL_RenderCopy(renderer, texture, null, &destRect);
-        _ = c.SDL_RenderPresent(renderer);
+        c.SDL_RenderPresent(renderer);
+        c.SDL_DestroyTexture(texture);
     }
 }
 
