@@ -80,17 +80,17 @@ pub const Chip8 = struct {
 
             self.last_timestamp = current_timestamp;
 
-            // Each instruction is two bytes long.
-            const instruction = @as(u16, self.memory[self.program_counter]) << 8 | self.memory[self.program_counter + 1];
+            // Fetch the next instruction and increment the program counter.
+            const instruction: u16 = @as(u16, self.memory[self.program_counter]) << 8 | self.memory[self.program_counter + 1];
             self.program_counter += 2;
 
             // Decode instructions
-            const code = @as(u16, instruction) & 0xF000;
-            const x = @as(u16, instruction) & 0x0F00 >> 8;
-            const y = @as(u16, instruction) & 0x00F0 >> 4;
-            const n = @as(u16, instruction) & 0x000F;
-            const nn = @as(u16, instruction) & 0x00FF;
-            const nnn = @as(u16, instruction) & 0x0FFF;
+            const code: u16 = instruction & 0xF000;
+            const x: u8 = @truncate(u8, instruction) & 0x0F00 >> 8;
+            const y: u8 = @truncate(u8, instruction) & 0x00F0 >> 4;
+            const n: u8 = @truncate(u8, instruction) & 0x000F;
+            const nn: u8 = @truncate(u8, instruction) & 0x00FF;
+            const nnn: u16 = instruction & 0x0FFF;
 
             std.debug.print(">> code={X}, x={X}, y={X}, n={X}, nn={X}, nnn={X}\n", .{ code, x, y, n, nn, nnn });
 
@@ -102,76 +102,70 @@ pub const Chip8 = struct {
                     0x00 => @memset(&self.video, 0),
                     // 00EE - RET
                     0x0E => {
-                        self.program_counter = self.stack[self.stack_pointer];
                         self.stack_pointer -= 1;
+                        self.program_counter = self.stack[self.stack_pointer];
                     },
                     else => unreachable,
                 },
                 // 1nnn - JP addr
                 0x1000 => self.program_counter = nnn,
                 // 2nnn - CALL addr
-                0x2000 => {
-                    self.stack_pointer += 1;
-                    self.stack[self.stack_pointer] = self.program_counter;
-                    self.program_counter = nnn;
-                },
+                // 0x2000 => {
+                //     self.stack_pointer += 1;
+                //     self.stack[self.stack_pointer] = self.program_counter;
+                //     self.program_counter = nnn;
+                // },
                 // 3xkk - Skip next instruction V[x] = kk
-                0x3000 => {
-                    if (self.registers[x] == nn) {
-                        self.program_counter += 2;
-                    }
-                },
+                // 0x3000 => {
+                //     if (self.registers[x] == nn) {
+                //         self.program_counter += 2;
+                //     }
+                // },
                 // 4xkk - Skip next instruction V[x] != kk
-                0x4000 => {
-                    if (self.registers[x] != nn) {
-                        self.program_counter += 2;
-                    }
-                },
+                // 0x4000 => {
+                //     if (self.registers[x] != nn) {
+                //         self.program_counter += 2;
+                //     }
+                // },
                 // 5xy0 - Skip next instruction Vx = Vy
-                0x5000 => {
-                    if (self.registers[x] == self.registers[y]) {
-                        self.program_counter += 2;
-                    }
-                },
+                // 0x5000 => {
+                //     if (self.registers[x] == self.registers[y]) {
+                //         self.program_counter += 2;
+                //     }
+                // },
                 // 6xkk - Set register Vx = kk
                 0x6000 => {
-                    const x_u8: u8 = @intCast(u8, x);
-                    self.registers[x_u8] = @intCast(u8, nn);
+                    self.registers[x] = nn;
                 },
                 // 7xkk - Add value to register
                 0x7000 => {
-                    const x_u8: u8 = @intCast(u8, x);
-                    self.registers[x_u8] += @intCast(u8, nn);
+                    self.registers[x] += nn;
                 },
                 // Annn - LD. Set I = nnn.
                 0xA000 => self.index_register = nnn,
 
                 // DXYN - Display n-byte sprite at memory location I at (Vx, Vy), set VF = collision.
                 0xD000 => {
-                    const x_pos = self.memory[x] % DISPLAY_WIDTH;
-                    const y_pos = self.memory[y] % DISPLAY_HEIGHT;
+                    const x_pos: u8 = self.registers[x] % DISPLAY_WIDTH;
+                    const y_pos: u8 = self.registers[y] % DISPLAY_HEIGHT;
 
                     self.registers[0x0F] = 0; // clear the collision flag
 
-                    for (0..n) |index| {
-                        const pixel = self.memory[self.index_register + index];
-                        const cy = y_pos + index;
+                    for (0..n) |row| {
+                        const sprite_byte = self.memory[self.index_register + row];
 
-                        for (0..8) |bit| {
-                            const cx = (x_pos + index) % DISPLAY_WIDTH;
-                            const current_color = self.video[cy * DISPLAY_WIDTH + cx];
-                            const mask = (0x01 << 7) - bit;
-                            const color = pixel & mask;
+                        for (0..8) |col| {
+                            const sprite_pixel: u8 = sprite_byte & (@intCast(u8, 0x80) >> @intCast(u3, col));
+                            const screen_pixel:*u32 = &self.video[(y_pos + row) * DISPLAY_WIDTH + (x_pos + col)];
 
-                            if (color > 0) {
-                                if (current_color > 0) {
-                                    self.video[cy * DISPLAY_WIDTH + cx] = 0;
-                                    self.registers[0x0F] = 1;
-                                } else {
+                            std.debug.print("sp=={}\n", .{sprite_pixel});
 
-                                    //TODO: Need to change this back to 1 and have the SDL code map it to the proper color
-                                    self.video[cy * DISPLAY_WIDTH + cx] = 0xFFFFFF; //1;
+                            if (sprite_pixel != 0) {
+                                if (screen_pixel.* == 0xFFFFFFFF) {
+                                    self.registers[0xF] = 1;
                                 }
+
+                                screen_pixel.* ^= 0xFFFFFFFF;
                             }
                         }
                     }

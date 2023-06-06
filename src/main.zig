@@ -27,23 +27,29 @@ pub fn main() !void {
     _ = c.SDL_Init(c.SDL_INIT_VIDEO);
     defer c.SDL_Quit();
 
-    var window = c.SDL_CreateWindow("CHIP8", c.SDL_WINDOWPOS_CENTERED, c.SDL_WINDOWPOS_CENTERED, chip8.DISPLAY_WIDTH, chip8.DISPLAY_HEIGHT, 0);
+    const VIDEO_SCALE = 8;
+    var window = c.SDL_CreateWindow("CHIP8", c.SDL_WINDOWPOS_CENTERED, c.SDL_WINDOWPOS_CENTERED, chip8.DISPLAY_WIDTH * VIDEO_SCALE, chip8.DISPLAY_HEIGHT * VIDEO_SCALE, 0);
     defer c.SDL_DestroyWindow(window);
 
-    // This should enable scaling
-    _ = c.SDL_SetWindowSize(window, 640, 480);
     var renderer = c.SDL_CreateRenderer(window, -1, c.SDL_RENDERER_SOFTWARE);
     defer c.SDL_DestroyRenderer(renderer);
-    _ = c.SDL_RenderSetScale(renderer, 4, 4);
-    _ = c.SDL_RenderSetLogicalSize(renderer, 640, 480);
 
     // Setup SDL Texture and Surface
-    const surface = c.SDL_CreateRGBSurface(0, chip8.DISPLAY_WIDTH, chip8.DISPLAY_HEIGHT, 32, 0, 0, 0, 0);
+    // const surface = c.SDL_CreateRGBSurface(0, chip8.DISPLAY_WIDTH, chip8.DISPLAY_HEIGHT, 32, 0, 0, 0, 0);
+    // defer c.SDL_FreeSurface(surface);
+    // const video_pitch = @typeInfo(instance.video[0]).Int.bits * chip8.DISPLAY_HEIGHT; //@as(c_int, surface.*.pitch * surface.*.h);
+
+    const surface = c.SDL_CreateRGBSurface(0, chip8.DISPLAY_WIDTH * VIDEO_SCALE, chip8.DISPLAY_HEIGHT * VIDEO_SCALE, 32, 0, 0, 0, 0);
     defer c.SDL_FreeSurface(surface);
+
+    // const texture = c.SDL_CreateTextureFromSurface(renderer, surface);
+    // defer c.SDL_DestroyTexture(texture);
 
     // Start emulation
     var instance = chip8.Chip8.init(allocator, random);
     try instance.loadRom("IBM Logo.ch8");
+    const video_pitch = @sizeOf(u32) * chip8.DISPLAY_HEIGHT;
+    _ = video_pitch;
 
     mainloop: while (true) {
         // Process events
@@ -61,25 +67,17 @@ pub fn main() !void {
         // Need to draw the pixels
         // See: https://github.com/sgalland/SAGE-CPP/blob/master/src/backend/sdl2/Graphics.cpp
 
-        _ = c.SDL_RenderClear(renderer);
-        _ = c.SDL_SetRenderTarget(renderer, null);
-        _ = c.SDL_SetRenderDrawColor(renderer, 0x00, 0x00, 0x00, 0x00);
-
+        // const video_memory: ?*const anyopaque = @ptrCast(?*anyopaque, &instance.video);
+        // _ = c.memcpy(surface.*.pixels, &instance.video[0], video_pitch);
         const num: usize = @intCast(usize, surface.*.pitch * surface.*.h);
         const video_memory = @ptrCast(?*anyopaque, &instance.video);
         _ = c.memcpy(surface.*.pixels, video_memory, num);
-
+        // _ = c.memcpy(surface.*.pixels, &instance.video[0], video_pitch);
         const texture = c.SDL_CreateTextureFromSurface(renderer, surface);
-
-        const destRect: c.SDL_Rect = c.SDL_Rect{
-            .x = 0,
-            .y = 0,
-            .w = chip8.DISPLAY_WIDTH,
-            .h = chip8.DISPLAY_HEIGHT,
-        };
-        _ = c.SDL_RenderCopy(renderer, texture, null, &destRect);
+        // _ = c.SDL_UpdateTexture(texture, null, ptr, video_pitch);
+        _ = c.SDL_RenderClear(renderer);
+        _ = c.SDL_RenderCopy(renderer, texture, null, null);
         c.SDL_RenderPresent(renderer);
-        c.SDL_DestroyTexture(texture);
     }
 }
 
