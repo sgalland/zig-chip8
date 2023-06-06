@@ -53,10 +53,22 @@ pub fn main() !void {
         // Need to draw the pixels
         // See: https://github.com/sgalland/SAGE-CPP/blob/master/src/backend/sdl2/Graphics.cpp
 
+        _ = c.SDL_RenderClear(renderer);
         _ = c.SDL_SetRenderTarget(renderer, null);
         _ = c.SDL_SetRenderDrawColor(renderer, 0x00, 0x00, 0x00, 0x00);
-        //TODO: Need to implement texture to draw to
-        //_ = c.(renderer, texture->getSDLTexture(), nullptr, &destSize);
+        const surface = c.SDL_CreateRGBSurface(0, chip8.DISPLAY_WIDTH, chip8.DISPLAY_HEIGHT, 32, 0, 0, 0, 0);
+        defer c.SDL_FreeSurface(surface);
+
+        const texture = c.SDL_CreateTexture(renderer, surface.*.format.*.format, c.SDL_TEXTUREACCESS_STREAMING, chip8.DISPLAY_WIDTH, chip8.DISPLAY_HEIGHT);
+        defer c.SDL_DestroyTexture(texture);
+
+        const destRect: c.SDL_Rect = c.SDL_Rect{
+            .x = 0,
+            .y = 0,
+            .w = chip8.DISPLAY_WIDTH,
+            .h = chip8.DISPLAY_HEIGHT,
+        };
+        _ = c.SDL_RenderCopy(renderer, texture, null, &destRect);
         _ = c.SDL_RenderPresent(renderer);
     }
 }
