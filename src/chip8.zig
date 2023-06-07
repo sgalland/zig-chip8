@@ -148,17 +148,16 @@ pub const Chip8 = struct {
                 0xD000 => {
                     const x_pos: u8 = self.registers[x] % DISPLAY_WIDTH;
                     const y_pos: u8 = self.registers[y] % DISPLAY_HEIGHT;
+                    const height = n;
 
                     self.registers[0x0F] = 0; // clear the collision flag
 
-                    for (0..n) |row| {
+                    for (0..height) |row| {
                         const sprite_byte = self.memory[self.index_register + row];
 
                         for (0..8) |col| {
-                            const sprite_pixel: u8 = sprite_byte & (@intCast(u8, 0x80) >> @intCast(u3, col));
-                            const screen_pixel:*u32 = &self.video[(y_pos + row) * DISPLAY_WIDTH + (x_pos + col)];
-
-                            std.debug.print("sp=={}\n", .{sprite_pixel});
+                            const sprite_pixel: u8 = sprite_byte & std.math.shr(u8, 0x80, col);
+                            const screen_pixel: *u32 = &self.video[(y_pos + row) * DISPLAY_WIDTH + (x_pos + col)];
 
                             if (sprite_pixel != 0) {
                                 if (screen_pixel.* == 0xFFFFFFFF) {

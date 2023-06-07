@@ -5,6 +5,14 @@ const c = @cImport({
 const chip8 = @import("chip8.zig");
 
 pub fn main() !void {
+    // Make user configurable
+    const VIDEO_SCALE = 8;
+    const VIDEO_WIDTH = 64;
+    const VIDEO_HEIGHT = 32;
+
+    const NEW_VIDEO_WIDTH = VIDEO_WIDTH * VIDEO_SCALE;
+    const NEW_VIDEO_HEIGHT = VIDEO_HEIGHT * VIDEO_SCALE;
+
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
     defer {
@@ -27,29 +35,59 @@ pub fn main() !void {
     _ = c.SDL_Init(c.SDL_INIT_VIDEO);
     defer c.SDL_Quit();
 
-    const VIDEO_SCALE = 8;
-    var window = c.SDL_CreateWindow("CHIP8", c.SDL_WINDOWPOS_CENTERED, c.SDL_WINDOWPOS_CENTERED, chip8.DISPLAY_WIDTH * VIDEO_SCALE, chip8.DISPLAY_HEIGHT * VIDEO_SCALE, 0);
+    var window = c.SDL_CreateWindow("CHIP8", c.SDL_WINDOWPOS_CENTERED, c.SDL_WINDOWPOS_CENTERED, NEW_VIDEO_WIDTH, NEW_VIDEO_HEIGHT, 0);
     defer c.SDL_DestroyWindow(window);
 
     var renderer = c.SDL_CreateRenderer(window, -1, c.SDL_RENDERER_SOFTWARE);
     defer c.SDL_DestroyRenderer(renderer);
 
-    // Setup SDL Texture and Surface
-    // const surface = c.SDL_CreateRGBSurface(0, chip8.DISPLAY_WIDTH, chip8.DISPLAY_HEIGHT, 32, 0, 0, 0, 0);
-    // defer c.SDL_FreeSurface(surface);
-    // const video_pitch = @typeInfo(instance.video[0]).Int.bits * chip8.DISPLAY_HEIGHT; //@as(c_int, surface.*.pitch * surface.*.h);
+    // This should enable scaling
+    _ = c.SDL_SetWindowSize(window, NEW_VIDEO_WIDTH, NEW_VIDEO_HEIGHT);
+    _ = c.SDL_RenderSetLogicalSize(renderer, NEW_VIDEO_WIDTH, NEW_VIDEO_HEIGHT);
+    _ = c.SDL_RenderSetScale(renderer, VIDEO_SCALE, VIDEO_SCALE);
 
-    const surface = c.SDL_CreateRGBSurface(0, chip8.DISPLAY_WIDTH * VIDEO_SCALE, chip8.DISPLAY_HEIGHT * VIDEO_SCALE, 32, 0, 0, 0, 0);
+    // Setup SDL Texture and Surface
+    const surface = c.SDL_CreateRGBSurface(0, chip8.DISPLAY_WIDTH, chip8.DISPLAY_HEIGHT, 32, 0, 0, 0, 0);
     defer c.SDL_FreeSurface(surface);
 
-    // const texture = c.SDL_CreateTextureFromSurface(renderer, surface);
-    // defer c.SDL_DestroyTexture(texture);
+    // const video_pitch = @sizeOf(u32) * VIDEO_HEIGHT;
+    //TODO: This pitch appears to get rid of duplication
+    const video_pitch = @sizeOf(u32) * VIDEO_WIDTH;
+
+    const texture = c.SDL_CreateTextureFromSurface(renderer, surface);
+    defer c.SDL_DestroyTexture(texture);
 
     // Start emulation
     var instance = chip8.Chip8.init(allocator, random);
     try instance.loadRom("IBM Logo.ch8");
-    const video_pitch = @sizeOf(u32) * chip8.DISPLAY_HEIGHT;
-    _ = video_pitch;
+
+    var step: usize = 0;
+
+    //
+    //
+    // TEST CODE
+    //
+    //
+    const foo = try std.time.Instant.now();
+    var prgn = std.rand.DefaultPrng.init(foo.timestamp);
+    const rnd = prgn.random();
+    var text_buffer: [VIDEO_WIDTH * VIDEO_HEIGHT]u32 = undefined;
+    for (0..VIDEO_WIDTH) |x| {
+        for (0..VIDEO_HEIGHT) |y| {
+            // const pos = x * 64 + y;
+            // if (y % 2 != 0)
+            //     text_buffer[pos] = 0x00000000
+            // else
+            //     text_buffer[pos] = 0xFFFFFF;
+            const pos = x * VIDEO_HEIGHT + y;
+            if (x == step and y == step and x < VIDEO_WIDTH and y < VIDEO_HEIGHT) {
+                text_buffer[pos] = rnd.intRangeAtMost(u32, 0x00000000, 0xFFFFFF);
+                step += 1;
+            } else {
+                text_buffer[pos] = 0x00000000;
+            }
+        }
+    }
 
     mainloop: while (true) {
         // Process events
@@ -67,14 +105,8 @@ pub fn main() !void {
         // Need to draw the pixels
         // See: https://github.com/sgalland/SAGE-CPP/blob/master/src/backend/sdl2/Graphics.cpp
 
-        // const video_memory: ?*const anyopaque = @ptrCast(?*anyopaque, &instance.video);
-        // _ = c.memcpy(surface.*.pixels, &instance.video[0], video_pitch);
-        const num: usize = @intCast(usize, surface.*.pitch * surface.*.h);
-        const video_memory = @ptrCast(?*anyopaque, &instance.video);
-        _ = c.memcpy(surface.*.pixels, video_memory, num);
-        // _ = c.memcpy(surface.*.pixels, &instance.video[0], video_pitch);
-        const texture = c.SDL_CreateTextureFromSurface(renderer, surface);
-        // _ = c.SDL_UpdateTexture(texture, null, ptr, video_pitch);
+        //instance.video
+        _ = c.SDL_UpdateTexture(texture, null, &text_buffer, @intCast(c_int, video_pitch));
         _ = c.SDL_RenderClear(renderer);
         _ = c.SDL_RenderCopy(renderer, texture, null, null);
         c.SDL_RenderPresent(renderer);
