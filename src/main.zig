@@ -105,11 +105,13 @@ pub fn main() !void {
         // Need to draw the pixels
         // See: https://github.com/sgalland/SAGE-CPP/blob/master/src/backend/sdl2/Graphics.cpp
 
-        //instance.video
-        _ = c.SDL_UpdateTexture(texture, null, &text_buffer, @intCast(c_int, video_pitch));
-        _ = c.SDL_RenderClear(renderer);
-        _ = c.SDL_RenderCopy(renderer, texture, null, null);
-        c.SDL_RenderPresent(renderer);
+        if (instance.update_display) {
+            //instance.video
+            _ = c.SDL_UpdateTexture(texture, null, &instance.video, @intCast(c_int, video_pitch));
+            _ = c.SDL_RenderClear(renderer);
+            _ = c.SDL_RenderCopy(renderer, texture, null, null);
+            c.SDL_RenderPresent(renderer);
+        }
     }
 }
 

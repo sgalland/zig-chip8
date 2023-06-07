@@ -50,6 +50,7 @@ pub const Chip8 = struct {
 
     // Emulator internals
     last_timestamp: u64 = 0,
+    update_display: bool = false,
 
     pub fn init(allocator: Allocator, random: std.rand.Random) Chip8 {
         return Chip8{
@@ -85,7 +86,7 @@ pub const Chip8 = struct {
             self.program_counter += 2;
 
             // Decode instructions
-            const code: u16 = instruction & 0xF000;
+            const code: u16 = (instruction & 0xF000);
             const x: u8 = @truncate(u8, instruction) & 0x0F00 >> 8;
             const y: u8 = @truncate(u8, instruction) & 0x00F0 >> 4;
             const n: u8 = @truncate(u8, instruction) & 0x000F;
@@ -94,16 +95,21 @@ pub const Chip8 = struct {
 
             std.debug.print(">> code={X}, x={X}, y={X}, n={X}, nn={X}, nnn={X}\n", .{ code, x, y, n, nn, nnn });
 
+            // Execute instructions
             // The comments below are taken from Cowgod's Chip-8 technical reference
             // See: http://devernay.free.fr/hacks/chip8/C8TECH10.HTM#00E0
             switch (code) {
                 0x0000 => switch (n) {
                     // 00E0 - CLS
-                    0x00 => @memset(&self.video, 0),
+                    0x00 => {
+                        @memset(&self.video, 0);
+                        self.update_display = false;
+                    },
                     // 00EE - RET
                     0x0E => {
-                        self.stack_pointer -= 1;
                         self.program_counter = self.stack[self.stack_pointer];
+                        if (self.stack_pointer > 0)
+                            self.stack_pointer -= 1;
                     },
                     else => unreachable,
                 },
@@ -146,13 +152,13 @@ pub const Chip8 = struct {
 
                 // DXYN - Display n-byte sprite at memory location I at (Vx, Vy), set VF = collision.
                 0xD000 => {
+                    // @memset(&self.video, -0);
                     const x_pos: u8 = self.registers[x] % DISPLAY_WIDTH;
                     const y_pos: u8 = self.registers[y] % DISPLAY_HEIGHT;
-                    const height = n;
 
-                    self.registers[0x0F] = 0; // clear the collision flag
+                    self.registers[0xF] = 0; // clear the collision flag
 
-                    for (0..height) |row| {
+                    for (0..n) |row| {
                         const sprite_byte = self.memory[self.index_register + row];
 
                         for (0..8) |col| {
@@ -165,6 +171,7 @@ pub const Chip8 = struct {
                                 }
 
                                 screen_pixel.* ^= 0xFFFFFFFF;
+                                self.update_display = true;
                             }
                         }
                     }
