@@ -147,6 +147,8 @@ pub const Chip8 = struct {
                     const x_pos: u8 = self.registers[x] % DISPLAY_WIDTH;
                     const y_pos: u8 = self.registers[y] % DISPLAY_HEIGHT;
 
+                    std.debug.print("x=[{}]{}, y=[{}]{}\n", .{ x, x_pos, y, y_pos });
+
                     self.registers[0xF] = 0; // clear the collision flag
 
                     for (0..n) |row| {

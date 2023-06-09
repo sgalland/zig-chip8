@@ -52,6 +52,7 @@ pub fn main() !void {
     const video_pitch = @sizeOf(u32) * chip8.DISPLAY_WIDTH;
 
     var step: usize = 0;
+    _ = step;
 
     //
     //
@@ -61,19 +62,20 @@ pub fn main() !void {
     const foo = try std.time.Instant.now();
     var prgn = std.rand.DefaultPrng.init(foo.timestamp);
     const rnd = prgn.random();
+    _ = rnd;
 
     var text_buffer: [chip8.DISPLAY_WIDTH * chip8.DISPLAY_HEIGHT]u32 = [_]u32{0} ** (chip8.DISPLAY_WIDTH * chip8.DISPLAY_HEIGHT);
     for (0..chip8.DISPLAY_WIDTH) |x| {
         for (0..chip8.DISPLAY_HEIGHT) |y| {
             const pos = y * chip8.DISPLAY_WIDTH + x;
 
-            if (x == step and y == step) {
-                text_buffer[pos] = rnd.intRangeAtMost(u32, 0xFF000000, 0xFFFFFFFF);
-                //0xFFFFFFFF;
-                step += 1;
-            } else text_buffer[pos] = 0x00000000;
+            // if (x == step and y == step) {
+            //     text_buffer[pos] = rnd.intRangeAtMost(u32, 0xFF000000, 0xFFFFFFFF);
+            //     //0xFFFFFFFF;
+            //     step += 1;
+            // } else text_buffer[pos] = 0x00000000;
 
-            // if (x == 0 or x == chip8.DISPLAY_WIDTH - 1 or y == 0 or y == chip8.DISPLAY_HEIGHT - 1) text_buffer[pos] = 0xFFFFFFFF;
+            if (x == 0 or x == chip8.DISPLAY_WIDTH - 1 or y == 0 or y == chip8.DISPLAY_HEIGHT - 1) text_buffer[pos] = 0xFFFF0000;
         }
     }
 
