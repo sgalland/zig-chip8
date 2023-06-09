@@ -92,7 +92,7 @@ pub const Chip8 = struct {
             const nn: u8 = @truncate(u8, instruction) & 0x00FF;
             const nnn: u16 = instruction & 0x0FFF;
 
-            std.debug.print(">> code={X}, x={X}, y={X}, n={X}, nn={X}, nnn={X}\n", .{ code, x, y, n, nn, nnn });
+            // std.debug.print(">> code={X}, x={X}, y={X}, n={X}, nn={X}, nnn={X}\n", .{ code, x, y, n, nn, nnn });
 
             // Execute instructions
             // The comments below are taken from Cowgod's Chip-8 technical reference
