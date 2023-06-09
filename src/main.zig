@@ -31,35 +31,25 @@ pub fn main() !void {
     var random_generator = std.rand.DefaultPrng.init(now.timestamp);
     const random = random_generator.random();
 
+    // Start emulation
+    var instance = chip8.Chip8.init(allocator, random);
+    try instance.loadRom("IBM Logo.ch8");
+
     // Initialize SDL
     _ = c.SDL_Init(c.SDL_INIT_VIDEO);
     defer c.SDL_Quit();
 
-    var window = c.SDL_CreateWindow("CHIP8", c.SDL_WINDOWPOS_CENTERED, c.SDL_WINDOWPOS_CENTERED, NEW_VIDEO_WIDTH, NEW_VIDEO_HEIGHT, 0);
+    var window = c.SDL_CreateWindow("zCHIP8", c.SDL_WINDOWPOS_CENTERED, c.SDL_WINDOWPOS_CENTERED, NEW_VIDEO_WIDTH, NEW_VIDEO_HEIGHT, c.SDL_WINDOW_SHOWN);
     defer c.SDL_DestroyWindow(window);
 
-    var renderer = c.SDL_CreateRenderer(window, -1, c.SDL_RENDERER_SOFTWARE);
+    var renderer = c.SDL_CreateRenderer(window, -1, c.SDL_RENDERER_ACCELERATED);
     defer c.SDL_DestroyRenderer(renderer);
 
-    // This should enable scaling
-    _ = c.SDL_SetWindowSize(window, NEW_VIDEO_WIDTH, NEW_VIDEO_HEIGHT);
-    _ = c.SDL_RenderSetLogicalSize(renderer, NEW_VIDEO_WIDTH, NEW_VIDEO_HEIGHT);
-    _ = c.SDL_RenderSetScale(renderer, VIDEO_SCALE, VIDEO_SCALE);
+    //  The pitch size must be fron c_int, otherwise its just wrong
+    const video_pitch = @sizeOf(c_int) * VIDEO_HEIGHT;
 
-    // Setup SDL Texture and Surface
-    const surface = c.SDL_CreateRGBSurface(0, chip8.DISPLAY_WIDTH, chip8.DISPLAY_HEIGHT, 32, 0, 0, 0, 0);
-    defer c.SDL_FreeSurface(surface);
-
-    // const video_pitch = @sizeOf(u32) * VIDEO_HEIGHT;
-    //TODO: This pitch appears to get rid of duplication
-    const video_pitch = @sizeOf(u32) * VIDEO_WIDTH;
-
-    const texture = c.SDL_CreateTextureFromSurface(renderer, surface);
+    const texture = c.SDL_CreateTexture(renderer, c.SDL_PIXELFORMAT_RGBA8888, c.SDL_TEXTUREACCESS_STREAMING, chip8.DISPLAY_WIDTH, chip8.DISPLAY_HEIGHT);
     defer c.SDL_DestroyTexture(texture);
-
-    // Start emulation
-    var instance = chip8.Chip8.init(allocator, random);
-    try instance.loadRom("IBM Logo.ch8");
 
     var step: usize = 0;
 
@@ -74,18 +64,19 @@ pub fn main() !void {
     var text_buffer: [VIDEO_WIDTH * VIDEO_HEIGHT]u32 = undefined;
     for (0..VIDEO_WIDTH) |x| {
         for (0..VIDEO_HEIGHT) |y| {
-            // const pos = x * 64 + y;
-            // if (y % 2 != 0)
-            //     text_buffer[pos] = 0x00000000
-            // else
-            //     text_buffer[pos] = 0xFFFFFF;
             const pos = x * VIDEO_HEIGHT + y;
-            if (x == step and y == step and x < VIDEO_WIDTH and y < VIDEO_HEIGHT) {
+            if (x == step and y == step) {
                 text_buffer[pos] = rnd.intRangeAtMost(u32, 0x00000000, 0xFFFFFF);
+                //0xFFFFFFFF;
                 step += 1;
-            } else {
-                text_buffer[pos] = 0x00000000;
-            }
+            } else text_buffer[pos] = 0x00000000;
+            // const pos = x * VIDEO_HEIGHT + y;
+            // if (x == step and y == step and x < VIDEO_WIDTH and y < VIDEO_HEIGHT) {
+            //     text_buffer[pos] = rnd.intRangeAtMost(u32, 0x00000000, 0xFFFFFF);
+            //     step += 1;
+            // } else {
+            //     text_buffer[pos] = 0x00000000;
+            // }
         }
     }
 
@@ -105,13 +96,10 @@ pub fn main() !void {
         // Need to draw the pixels
         // See: https://github.com/sgalland/SAGE-CPP/blob/master/src/backend/sdl2/Graphics.cpp
 
-        if (instance.update_display) {
-            //instance.video
-            _ = c.SDL_UpdateTexture(texture, null, &instance.video, @intCast(c_int, video_pitch));
-            _ = c.SDL_RenderClear(renderer);
-            _ = c.SDL_RenderCopy(renderer, texture, null, null);
-            c.SDL_RenderPresent(renderer);
-        }
+        _ = c.SDL_UpdateTexture(texture, null, &text_buffer, video_pitch);
+        _ = c.SDL_RenderClear(renderer);
+        _ = c.SDL_RenderCopy(renderer, texture, null, null);
+        c.SDL_RenderPresent(renderer);
     }
 }
 

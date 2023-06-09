@@ -50,7 +50,6 @@ pub const Chip8 = struct {
 
     // Emulator internals
     last_timestamp: u64 = 0,
-    update_display: bool = false,
 
     pub fn init(allocator: Allocator, random: std.rand.Random) Chip8 {
         return Chip8{
@@ -101,16 +100,13 @@ pub const Chip8 = struct {
             switch (code) {
                 0x0000 => switch (n) {
                     // 00E0 - CLS
-                    0x00 => {
-                        @memset(&self.video, 0);
-                        self.update_display = false;
-                    },
+                    0x00 => @memset(&self.video, 0),
                     // 00EE - RET
-                    0x0E => {
-                        self.program_counter = self.stack[self.stack_pointer];
-                        if (self.stack_pointer > 0)
-                            self.stack_pointer -= 1;
-                    },
+                    // 0x0E => {
+                    //     self.program_counter = self.stack[self.stack_pointer];
+                    //     if (self.stack_pointer > 0)
+                    //         self.stack_pointer -= 1;
+                    // },
                     else => unreachable,
                 },
                 // 1nnn - JP addr
@@ -140,19 +136,14 @@ pub const Chip8 = struct {
                 //     }
                 // },
                 // 6xkk - Set register Vx = kk
-                0x6000 => {
-                    self.registers[x] = nn;
-                },
+                0x6000 => self.registers[x] = nn,
                 // 7xkk - Add value to register
-                0x7000 => {
-                    self.registers[x] += nn;
-                },
+                0x7000 => self.registers[x] += nn,
                 // Annn - LD. Set I = nnn.
                 0xA000 => self.index_register = nnn,
 
                 // DXYN - Display n-byte sprite at memory location I at (Vx, Vy), set VF = collision.
                 0xD000 => {
-                    // @memset(&self.video, -0);
                     const x_pos: u8 = self.registers[x] % DISPLAY_WIDTH;
                     const y_pos: u8 = self.registers[y] % DISPLAY_HEIGHT;
 
@@ -171,7 +162,6 @@ pub const Chip8 = struct {
                                 }
 
                                 screen_pixel.* ^= 0xFFFFFFFF;
-                                self.update_display = true;
                             }
                         }
                     }
