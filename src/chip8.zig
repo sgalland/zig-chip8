@@ -69,6 +69,7 @@ pub const Chip8 = struct {
         self.program_counter = USER_MEMORY_ADDRESS;
     }
 
+    // Executes the interpreter at a rate of 60 timers per second. Must in in a loop outside of this function.
     pub fn cycle(self: *Self, current_timestamp: u64) void {
         // Timers decrement at a rate of 60 times per second (every 16.66666666ms).
         // If value of the timer is greater than 0, decrement it
@@ -90,8 +91,6 @@ pub const Chip8 = struct {
             const n: u8 = @intCast(u8, instruction & 0x000F);
             const nn: u8 = @intCast(u8, instruction & 0x00FF);
             const nnn: u16 = instruction & 0x0FFF;
-
-            // std.debug.print(">> code={X}, x={X}, y={X}, n={X}, nn={X}, nnn={X}\n", .{ code, x, y, n, nn, nnn });
 
             // Execute instructions
             // The comments below are taken from Cowgod's Chip-8 technical reference
@@ -275,8 +274,7 @@ pub const Chip8 = struct {
                         else => unreachable,
                     }
                 },
-                else => std.debug.print(">> code={X}, x={X}, y={X}, n={X}, nn={X}, nnn={X} <<\n", .{ code, x, y, n, nn, nnn }),
-                //unreachable,
+                else => unreachable,
             }
         }
     }
