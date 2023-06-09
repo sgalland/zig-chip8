@@ -2,6 +2,13 @@
 
 This is a Chip8 implementation that I am writing in Zig as a learning project.
 
+## Tested ROMS
+
+| Name            | Link                                                                  |
+| --------------- | --------------------------------------------------------------------- |
+| IBM Logo.ch8    | https://github.com/loktar00/chip8/blob/master/roms/IBM%20Logo.ch8     |
+| test_opcode.ch8 | https://github.com/corax89/chip8-test-rom/blob/master/test_opcode.ch8 |
+
 ## References
 
 | Name                                 | Link                                                                             |

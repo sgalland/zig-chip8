@@ -102,46 +102,93 @@ pub const Chip8 = struct {
                     // 00E0 - CLS
                     0x00 => @memset(&self.video, 0),
                     // 00EE - RET
-                    // 0x0E => {
-                    //     self.program_counter = self.stack[self.stack_pointer];
-                    //     if (self.stack_pointer > 0)
-                    //         self.stack_pointer -= 1;
-                    // },
+                    0x0E => {
+                        self.program_counter = self.stack[self.stack_pointer];
+                        if (self.stack_pointer > 0)
+                            self.stack_pointer -= 1;
+                    },
                     else => unreachable,
                 },
                 // 1nnn - JP addr
                 0x1000 => self.program_counter = nnn,
                 // 2nnn - CALL addr
-                // 0x2000 => {
-                //     self.stack_pointer += 1;
-                //     self.stack[self.stack_pointer] = self.program_counter;
-                //     self.program_counter = nnn;
-                // },
+                0x2000 => {
+                    self.stack_pointer += 1;
+                    self.stack[self.stack_pointer] = self.program_counter;
+                    self.program_counter = nnn;
+                },
                 // 3xkk - Skip next instruction V[x] = kk
-                // 0x3000 => {
-                //     if (self.registers[x] == nn) {
-                //         self.program_counter += 2;
-                //     }
-                // },
+                0x3000 => {
+                    if (self.registers[x] == nn) {
+                        self.program_counter += 2;
+                    }
+                },
                 // 4xkk - Skip next instruction V[x] != kk
-                // 0x4000 => {
-                //     if (self.registers[x] != nn) {
-                //         self.program_counter += 2;
-                //     }
-                // },
+                0x4000 => {
+                    if (self.registers[x] != nn) {
+                        self.program_counter += 2;
+                    }
+                },
                 // 5xy0 - Skip next instruction Vx = Vy
-                // 0x5000 => {
-                //     if (self.registers[x] == self.registers[y]) {
-                //         self.program_counter += 2;
-                //     }
-                // },
+                0x5000 => {
+                    if (self.registers[x] == self.registers[y]) {
+                        self.program_counter += 2;
+                    }
+                },
                 // 6xkk - Set register Vx = kk
                 0x6000 => self.registers[x] = nn,
                 // 7xkk - Add value to register
-                0x7000 => self.registers[x] += nn,
+                0x7000 => self.registers[x] = @addWithOverflow(self.registers[x], nn)[0],
+                0x8000 => {
+                    switch (n) {
+                        // 8xy0 - LD Vx, Vy
+                        0x00 => self.registers[x] = self.registers[y],
+                        // 8xy1 - OR Vx, Vy
+                        0x01 => self.registers[x] |= self.registers[y],
+                        // 8xy2 - AND Vx, Vy
+                        0x02 => self.registers[x] &= self.registers[y],
+                        // 8xy3 - XOR Vx, Vy
+                        0x03 => self.registers[x] ^= self.registers[y],
+                        // 8xy4 - ADD Vx, Vy. If overflow set 0x0F
+                        0x04 => {
+                            const addOp = @addWithOverflow(self.registers[x], self.registers[y]);
+                            self.registers[x] = addOp[0];
+                            self.registers[0x0F] = addOp[1];
+                        },
+                        // 8xy5 - SUB Vx, Vy
+                        0x05 => {
+                            self.registers[0x0F] = if (self.registers[x] > self.registers[y]) 1 else 0;
+                            const subOp = @subWithOverflow(self.registers[x], self.registers[y]);
+                            self.registers[x] = subOp[0];
+                        },
+                        // 8xy6 - SHR Vx {, Vy}
+                        0x06 => {
+                            self.registers[0x0F] = self.registers[x] & 0x01;
+                            self.registers[x] /= 2;
+                        },
+                        // 8xy7 - SUBN Vx, Vy
+                        0x07 => {
+                            self.registers[0x0F] = if (self.registers[y] > self.registers[x]) 1 else 0;
+                            self.registers[x] = self.registers[y] - self.registers[x];
+                        },
+                        // 8xyE - SHL Vx {, Vy}
+                        0x0E => {
+                            self.registers[0x0F] = self.registers[x] & 0x80;
+                            self.registers[x] = @mulWithOverflow(self.registers[x], 2)[0];
+                        },
+                        else => unreachable,
+                    }
+                },
+                // 9xy0 - SNE Vx, Vy
+                0x9000 => {
+                    if (self.registers[x] != self.registers[y]) self.program_counter += 2;
+                },
                 // Annn - LD. Set I = nnn.
                 0xA000 => self.index_register = nnn,
-
+                // Bnnn - JP V0, addr
+                0xB000 => self.program_counter = nnn + self.registers[0],
+                // Cxkk - RND Vx, byte
+                0xC000 => self.registers[x] = nn & self.random.intRangeAtMost(u8, 0, 255),
                 // DXYN - Display n-byte sprite at memory location I at (Vx, Vy), set VF = collision.
                 0xD000 => {
                     const x_pos: u8 = self.registers[x] % DISPLAY_WIDTH;
@@ -166,8 +213,20 @@ pub const Chip8 = struct {
                         }
                     }
                 },
-                // Use std.debug.print(">> code={X}, x={X}, y={X}, n={X}, nn={X}, nnn={X}\n", .{ code, x, y, n, nn, nnn })
-                // to determine what instructions are missing.
+                0xE000 => {
+                    switch (nn) {
+                        // Ex9E - SKP Vx
+                        0x9E => {
+                            //TODO: Need to pass in the engine to chip8 to pump events
+                            // Checks the keyboard, and if the key corresponding to the value of Vx is currently in the down position, PC is increased by 2.
+                        },
+                        // ExA1 - SKNP Vx
+                        0xA1 => {
+                            // Checks the keyboard, and if the key corresponding to the value of Vx is currently in the up position, PC is increased by 2.
+                        },
+                        else => unreachable,
+                    }
+                },
                 else => std.debug.print(">> code={X}, x={X}, y={X}, n={X}, nn={X}, nnn={X} <<\n", .{ code, x, y, n, nn, nnn }),
                 //unreachable,
             }

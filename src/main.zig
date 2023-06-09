@@ -5,6 +5,28 @@ const c = @cImport({
 const chip8 = @import("chip8.zig");
 const engine = @import("engine.zig");
 
+pub fn findDefaultRoms() ![]const u8 {
+    const known_working_roms = [_][]const u8{ "IBM Logo.ch8", "test_opcode.ch8" };
+
+    var buf: [std.fs.MAX_PATH_BYTES]u8 = undefined;
+    const cwd_path = try std.os.getcwd(&buf);
+
+    var directory = try std.fs.cwd().openIterableDir(cwd_path, .{});
+    defer directory.close();
+
+    var iterator = directory.iterate();
+    while (try iterator.next()) |file| {
+        if (file.kind != .file) continue;
+
+        for (known_working_roms) |rom| {
+            if (std.mem.endsWith(u8, file.name, ".ch8") and std.mem.eql(u8, file.name, rom))
+                return file.name;
+        }
+    }
+
+    return undefined;
+}
+
 pub fn main() !void {
     // Make user configurable
     const VIDEO_SCALE = 8;
@@ -19,9 +41,13 @@ pub fn main() !void {
     var cmd_args = try std.process.argsWithAllocator(allocator);
     defer cmd_args.deinit();
 
-    while (cmd_args.next()) |arg| {
-        std.debug.print("Command line arg: {s}\n", .{arg});
-    }
+    var rom = "test_opcode.ch8";
+    // var rom: []const u8 = try findDefaultRoms();
+
+    // while (cmd_args.next()) |arg| {
+    //     std.debug.print("Command line arg: {s}\n", .{arg});
+    //     if (std.mem.endsWith(u8, arg, ".ch8")) rom = arg[0..];
+    // }
 
     const now = try std.time.Instant.now();
     var random_generator = std.rand.DefaultPrng.init(now.timestamp);
@@ -35,7 +61,7 @@ pub fn main() !void {
 
     // Start emulation
     var instance = chip8.Chip8.init(allocator, random);
-    try instance.loadRom("IBM Logo.ch8");
+    try instance.loadRom(rom);
 
     mainloop: while (true) {
         // Process events
