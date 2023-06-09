@@ -95,7 +95,7 @@ pub fn main() !void {
         // Need to draw the pixels
         // See: https://github.com/sgalland/SAGE-CPP/blob/master/src/backend/sdl2/Graphics.cpp
 
-        _ = c.SDL_UpdateTexture(texture, null, &text_buffer, video_pitch);
+        _ = c.SDL_UpdateTexture(texture, null, &instance.video, video_pitch);
         _ = c.SDL_RenderClear(renderer);
         _ = c.SDL_RenderCopy(renderer, texture, null, null);
         c.SDL_RenderPresent(renderer);

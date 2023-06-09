@@ -86,10 +86,10 @@ pub const Chip8 = struct {
 
             // Decode instructions
             const code: u16 = (instruction & 0xF000);
-            const x: u8 = @truncate(u8, instruction) & 0x0F00 >> 8;
-            const y: u8 = @truncate(u8, instruction) & 0x00F0 >> 4;
-            const n: u8 = @truncate(u8, instruction) & 0x000F;
-            const nn: u8 = @truncate(u8, instruction) & 0x00FF;
+            const x: u8 = @intCast(u8, @shrExact(instruction & 0x0F00, 8));
+            const y: u8 = @intCast(u8, @shrExact(instruction & 0x00F0, 4));
+            const n: u8 = @intCast(u8, instruction & 0x000F);
+            const nn: u8 = @intCast(u8, instruction & 0x00FF);
             const nnn: u16 = instruction & 0x0FFF;
 
             // std.debug.print(">> code={X}, x={X}, y={X}, n={X}, nn={X}, nnn={X}\n", .{ code, x, y, n, nn, nnn });
@@ -146,8 +146,6 @@ pub const Chip8 = struct {
                 0xD000 => {
                     const x_pos: u8 = self.registers[x] % DISPLAY_WIDTH;
                     const y_pos: u8 = self.registers[y] % DISPLAY_HEIGHT;
-
-                    std.debug.print("x=[{}]{}, y=[{}]{}\n", .{ x, x_pos, y, y_pos });
 
                     self.registers[0xF] = 0; // clear the collision flag
 
