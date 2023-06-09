@@ -72,4 +72,24 @@ pub const Event = struct {
         const key_state = c.SDL_GetKeyboardState(null);
         return key_state[key_pressed] > 0;
     }
+
+    pub fn getScancodePressed(self: *Self, scancode: u32) bool {
+        _ = self;
+
+        var event: c.SDL_Event = undefined;
+        while (c.SDL_PollEvent(&event) != 0) {
+            switch (event.type) {
+                c.SDL_KEYDOWN => {
+                    if (event.key.keysym.scancode == scancode) return true;
+                },
+                else => {},
+            }
+        }
+
+        return false;
+    }
+
+    pub fn  getCurrentKeyPress() void {
+        
+    }
 };

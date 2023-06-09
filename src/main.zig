@@ -60,7 +60,7 @@ pub fn main() !void {
     var event_e = engine.Event.init(&events);
 
     // Start emulation
-    var instance = chip8.Chip8.init(allocator, random);
+    var instance = chip8.Chip8.init(allocator, random, &event_e);
     try instance.loadRom(rom);
 
     mainloop: while (true) {

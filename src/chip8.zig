@@ -1,4 +1,5 @@
 const std = @import("std");
+const engine = @import("engine.zig");
 const Allocator = std.mem.Allocator;
 
 // Normally user programs are loaded at address 0x200.
@@ -50,12 +51,10 @@ pub const Chip8 = struct {
 
     // Emulator internals
     last_timestamp: u64 = 0,
+    event: *engine.Event,
 
-    pub fn init(allocator: Allocator, random: std.rand.Random) Chip8 {
-        return Chip8{
-            .allocator = allocator,
-            .random = random,
-        };
+    pub fn init(allocator: Allocator, random: std.rand.Random, event: *engine.Event) Chip8 {
+        return Chip8{ .allocator = allocator, .random = random, .event = event };
     }
 
     // Clears memory and loads ROM into memory. Sets the Program Counter to the start of user addressable memory.
@@ -169,7 +168,7 @@ pub const Chip8 = struct {
                         // 8xy7 - SUBN Vx, Vy
                         0x07 => {
                             self.registers[0x0F] = if (self.registers[y] > self.registers[x]) 1 else 0;
-                            self.registers[x] = self.registers[y] - self.registers[x];
+                            self.registers[x] = @subWithOverflow(self.registers[y], self.registers[x])[0];
                         },
                         // 8xyE - SHL Vx {, Vy}
                         0x0E => {
@@ -217,12 +216,61 @@ pub const Chip8 = struct {
                     switch (nn) {
                         // Ex9E - SKP Vx
                         0x9E => {
-                            //TODO: Need to pass in the engine to chip8 to pump events
-                            // Checks the keyboard, and if the key corresponding to the value of Vx is currently in the down position, PC is increased by 2.
+                            if (self.event.getScancodePressed(self.registers[x])) self.program_counter += 2;
                         },
                         // ExA1 - SKNP Vx
                         0xA1 => {
-                            // Checks the keyboard, and if the key corresponding to the value of Vx is currently in the up position, PC is increased by 2.
+                            if (!self.event.getScancodePressed(self.registers[x])) self.program_counter += 2;
+                        },
+                        else => unreachable,
+                    }
+                },
+                0xF000 => {
+                    switch (nn) {
+                        // Fx07 - LD Vx, DT
+                        0x07 => self.registers[x] = self.delay_timer,
+                        // Fx0A - LD Vx, K
+                        0x0A => {
+                            // retrieve the next keypress and store it in VX
+                            for (0..16) |key| {
+                                const key_code = @intCast(u8, key);
+                                if (self.event.getKeyPressed(key_code)) {
+                                    self.registers[x] = key_code;
+                                    break;
+                                }
+                            }
+                        },
+                        // Fx15 - LD DT, Vx
+                        0x15 => self.delay_timer = self.registers[x],
+                        // Fx18 - LD ST, Vx
+                        0x18 => self.sound_timer = self.registers[x],
+                        // Fx1E - ADD I, Vx
+                        0x1E => self.index_register += self.registers[x],
+                        // Fx29 - LD F, Vx
+                        0x29 => self.index_register = self.registers[x] * 0x05,
+                        // Fx33 - LD B, Vx
+                        0x33 => {
+                            var reg_data = self.registers[x];
+
+                            self.memory[self.index_register + 2] = reg_data % 10;
+                            reg_data /= 10;
+
+                            self.memory[self.index_register + 1] = reg_data % 10;
+                            reg_data /= 10;
+
+                            self.memory[self.index_register] = reg_data;
+                        },
+                        // Fx55 - LD [I], Vx
+                        0x55 => {
+                            for (0..x + 1) |i| {
+                                self.memory[self.index_register + i] = self.registers[i];
+                            }
+                        },
+                        // Fx65 - LD Vx, [I]
+                        0x65 => {
+                            for (0..x + 1) |i| {
+                                self.registers[i] = self.memory[self.index_register + i];
+                            }
                         },
                         else => unreachable,
                     }
