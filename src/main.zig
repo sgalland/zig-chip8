@@ -41,7 +41,7 @@ pub fn main() !void {
     var cmd_args = try std.process.argsWithAllocator(allocator);
     defer cmd_args.deinit();
 
-    var rom = "test_opcode.ch8";
+    var rom = "Space Invaders [David Winter].ch8";
     // var rom: []const u8 = try findDefaultRoms();
 
     // while (cmd_args.next()) |arg| {
@@ -75,8 +75,7 @@ pub fn main() !void {
 
         if (event_e.getKeyPressed(c.SDL_SCANCODE_ESCAPE)) break :mainloop;
 
-        const time_now = try std.time.Instant.now();
-        instance.cycle(time_now.timestamp);
+        instance.cycle(@intCast(u64, std.time.milliTimestamp()));
 
         graphics.update(&instance.video);
     }

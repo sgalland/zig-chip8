@@ -51,6 +51,7 @@ pub const Chip8 = struct {
 
     // Emulator internals
     last_timestamp: u64 = 0,
+    last_instruction_timestamp: u64 = 0,
     event: *engine.Event,
 
     pub fn init(allocator: Allocator, random: std.rand.Random, event: *engine.Event) Chip8 {
@@ -79,6 +80,11 @@ pub const Chip8 = struct {
             if (self.sound_timer > 0) self.sound_timer -= 1;
 
             self.last_timestamp = current_timestamp;
+        }
+
+        const instruction_speed = std.time.ms_per_s / 700;
+        if (current_timestamp - self.last_instruction_timestamp > instruction_speed) {
+            self.last_instruction_timestamp = current_timestamp;
 
             // Fetch the next instruction and increment the program counter.
             const instruction: u16 = @as(u16, self.memory[self.program_counter]) << 8 | self.memory[self.program_counter + 1];
@@ -199,14 +205,18 @@ pub const Chip8 = struct {
 
                         for (0..8) |col| {
                             const sprite_pixel: u8 = sprite_byte & std.math.shr(u8, 0x80, col);
-                            const screen_pixel: *u32 = &self.video[(y_pos + row) * DISPLAY_WIDTH + (x_pos + col)];
 
-                            if (sprite_pixel != 0) {
-                                if (screen_pixel.* == 0xFFFFFFFF) {
-                                    self.registers[0xF] = 1;
+                            var loc = (y_pos + row) * DISPLAY_WIDTH + (x_pos + col);
+                            if (loc < (DISPLAY_WIDTH * DISPLAY_HEIGHT)) {
+                                const screen_pixel: *u32 = &self.video[(y_pos + row) * DISPLAY_WIDTH + (x_pos + col)];
+
+                                if (sprite_pixel != 0) {
+                                    if (screen_pixel.* == 0xFFFFFFFF) {
+                                        self.registers[0xF] = 1;
+                                    }
+
+                                    screen_pixel.* ^= 0xFFFFFFFF;
                                 }
-
-                                screen_pixel.* ^= 0xFFFFFFFF;
                             }
                         }
                     }
