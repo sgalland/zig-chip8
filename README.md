@@ -4,10 +4,11 @@ This is a Chip8 implementation that I am writing in Zig as a learning project.
 
 ## Tested ROMS
 
-| Name            | Link                                                                  |
-| --------------- | --------------------------------------------------------------------- |
-| IBM Logo.ch8    | https://github.com/loktar00/chip8/blob/master/roms/IBM%20Logo.ch8     |
-| test_opcode.ch8 | https://github.com/corax89/chip8-test-rom/blob/master/test_opcode.ch8 |
+| Name                                      | Link                                                                                                                                                          |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| IBM Logo.ch8                              | https://github.com/loktar00/chip8/blob/master/roms/IBM%20Logo.ch8                                                                                             |
+| test_opcode.ch8                           | https://github.com/corax89/chip8-test-rom/blob/master/test_opcode.ch8                                                                                         |
+| Blinky [Hans Christian Egeberg, 1991].ch8 | https://github.com/trapexit/chipce8/blob/657cc8753a964d54c20093a1a506524231e456ce/roms/Chip-8%20Games/Blinky%20%5BHans%20Christian%20Egeberg%2C%201991%5D.ch8 |
 
 ## References
 
