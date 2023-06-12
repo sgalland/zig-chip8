@@ -1,58 +1,56 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 
-pub const CommandLineArgumentsArrayList = std.ArrayList(CommandLineArgument);
-
 pub const Arg = struct {
     pub const ArgNode = struct {
         next: ?*ArgNode,
 
         help: []const u8,
         arg_prefix: []const u8,
-        required: bool,
-        default: []const u8,
-        default_type: enum { INT, BOOL, STRING },
+        required: bool = false,
+        default: ?[]const u8 = undefined,
+        default_type: ?enum { INT, BOOL, STRING } = undefined,
     };
 
     first: ?*ArgNode,
     last: ?*ArgNode,
 };
 
-pub fn myCreateArgsList(node: Arg) []Arg {
-    _ = node;
-}
+pub fn createCmdLineArgs(allocator: Allocator, args: Arg) !void {
+    var cmd_args = try std.process.argsWithAllocator(allocator);
+    defer cmd_args.deinit();
 
-pub fn createCmdLineArgs(args: CommandLineArgumentsArrayList) void {
-    for (args.items) |arg| {
-        std.debug.print("prefix={s}, help={s}\n", .{ arg.arg_prefix, arg.help });
+    var current_node = args.first;
+    while (cmd_args.next()) |arg| {
+        std.debug.print("{s}\n", .{arg});
+        while (current_node.?.next) |node| {
+            if (std.mem.startsWith(u8, arg, node.arg_prefix)) {
+                const param = if (extractParam(arg, node.arg_prefix)) |p| p[0..] else "";
+
+                if (node.required and param.len == 0) {
+                    std.debug.print("Required field {s} was not found.\n", .{node.arg_prefix});
+                    std.debug.print("{s}\n", .{node.help});
+                    std.os.exit(0);
+                }
+            }
+
+            current_node.?.next = current_node.?.next.?.next;
+        }
+
+        current_node.?.next = args.first;
     }
 }
 
-pub const CommandLineArgumentParser = struct {
-    const Self = @This();
-    allocator: Allocator,
-
-    pub fn init(allocator: Allocator) Self {
-        return CommandLineArgumentParser{
-            .allocator = allocator,
-        };
+fn extractParam(param: [:0]const u8, pattern: []const u8) ?[:0]const u8 {
+    const pattern_index = std.mem.indexOf(u8, param, pattern);
+    if (pattern_index) |index| {
+        const len = index + pattern.len;
+        return param[len..];
     }
-};
 
-pub const CommandLineArgument = struct {
-    help: []const u8,
-    arg_prefix: []const u8,
-    required: bool = false,
-};
-
-pub fn CommandLineArgument2(comptime T: type) type {
-    return struct {
-        help: []const u8,
-        arg_prefix: []const u8,
-        required: bool,
-        default: ?T,
-    };
+    return null;
 }
+
 // //TODO: Need to move argument checking to another file
 // while (cmd_args.next()) |arg| {
 //     std.debug.print("Command line arg: {s}\n", .{arg});
