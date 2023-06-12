@@ -34,10 +34,10 @@ pub fn createCmdLineArgs(allocator: Allocator, args: Arg) !void {
                 }
             }
 
-            current_node.?.next = current_node.?.next.?.next;
+            current_node = current_node.?.next;
         }
 
-        current_node.?.next = args.first;
+        current_node = args.first;
     }
 }
 
