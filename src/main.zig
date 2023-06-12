@@ -4,6 +4,7 @@ const c = @cImport({
 });
 const chip8 = @import("chip8.zig");
 const engine = @import("engine.zig");
+const cmd = @import("cmd_args.zig");
 
 pub fn findDefaultRoms() ![]const u8 {
     const known_working_roms = [_][]const u8{ "IBM Logo.ch8", "test_opcode.ch8" };
@@ -27,12 +28,22 @@ pub fn findDefaultRoms() ![]const u8 {
     return undefined;
 }
 
+fn extractParam(param: [:0]const u8, pattern: []const u8) ?[:0]const u8 {
+    const pattern_index = std.mem.indexOf(u8, param, pattern);
+    if (pattern_index) |index| {
+        const len = index + pattern.len;
+        return param[len..];
+    }
+
+    return null;
+}
+
 pub fn main() !void {
     // Make user configurable
     const VIDEO_SCALE = 8;
 
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    const allocator = gpa.allocator();
+    var allocator = gpa.allocator();
     defer {
         const status = gpa.deinit();
         if (status == .leak) std.testing.expect(false) catch @panic("GeneralPurposeAllocator deinit failed");
@@ -41,13 +52,29 @@ pub fn main() !void {
     var cmd_args = try std.process.argsWithAllocator(allocator);
     defer cmd_args.deinit();
 
-    var rom = "Space Invaders [David Winter].ch8";
-    // var rom: []const u8 = try findDefaultRoms();
+    var rom: [:0]const u8 = "";
 
-    // while (cmd_args.next()) |arg| {
-    //     std.debug.print("Command line arg: {s}\n", .{arg});
-    //     if (std.mem.endsWith(u8, arg, ".ch8")) rom = arg[0..];
-    // }
+    var my_arg_list = cmd.CommandLineArgumentsArrayList.init(allocator);
+    // try my_arg_list.append(cmd.CommandLineArgument2(u32,  "-c=",  "Set interpreter cycle speed.",  false, 700));
+    // try my_arg_list.append(.{ .arg_prefix = "-r=", .help = "Path to the ROM to load.", .required = true });
+    // try my_arg_list.append(.{ .arg_prefix = "-s=", .help = "Set screen scaling. {2,4,8}", .required = false, .default = 8 });
+    var myArgList = cmd.Arg(u32){
+        .first = null,
+        .last = null,
+    };
+
+    //TODO: Perhaps rather than cmd.Args(T) perhaps we should create an argument on ArgNode that has a type, such as .type = INT (enum)
+    //TODO: and the default variable should just be a string that is parsed based on the type.
+    var cycle_speed_arg = cmd.Arg(u32).ArgNode{
+        .next = null,
+        .arg_prefix = "-c=",
+        .help = "Set interpreter cycle speed.",
+        .required = false,
+        .default = 700,
+    };
+    myArgList.first = &cycle_speed_arg;
+
+    cmd.createCmdLineArgs(my_arg_list);
 
     const now = try std.time.Instant.now();
     var random_generator = std.rand.DefaultPrng.init(now.timestamp);
