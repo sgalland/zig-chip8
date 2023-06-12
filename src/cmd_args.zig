@@ -41,11 +41,13 @@ pub fn createCmdLineArgs(allocator: Allocator, args: Arg) !void {
     }
 }
 
-fn extractParam(param: [:0]const u8, pattern: []const u8) ?[:0]const u8 {
+fn extractParam(param: [:0]const u8, pattern: []const u8) ?[]u8 {
     const pattern_index = std.mem.indexOf(u8, param, pattern);
     if (pattern_index) |index| {
         const len = index + pattern.len;
-        return param[len..];
+        var output: []u8 = undefined;
+        _ = std.mem.replace(u8, param[len..], "\"", "", output);
+        return output;
     }
 
     return null;
