@@ -58,19 +58,19 @@ pub fn main() !void {
     // try my_arg_list.append(cmd.CommandLineArgument2(u32,  "-c=",  "Set interpreter cycle speed.",  false, 700));
     // try my_arg_list.append(.{ .arg_prefix = "-r=", .help = "Path to the ROM to load.", .required = true });
     // try my_arg_list.append(.{ .arg_prefix = "-s=", .help = "Set screen scaling. {2,4,8}", .required = false, .default = 8 });
-    var myArgList = cmd.Arg(u32){
+    var myArgList = cmd.Arg{
         .first = null,
         .last = null,
     };
 
     //TODO: Perhaps rather than cmd.Args(T) perhaps we should create an argument on ArgNode that has a type, such as .type = INT (enum)
     //TODO: and the default variable should just be a string that is parsed based on the type.
-    var cycle_speed_arg = cmd.Arg(u32).ArgNode{
+    var cycle_speed_arg = cmd.Arg.ArgNode{
         .next = null,
         .arg_prefix = "-c=",
         .help = "Set interpreter cycle speed.",
         .required = false,
-        .default = 700,
+        .default = "700",
     };
     myArgList.first = &cycle_speed_arg;
 

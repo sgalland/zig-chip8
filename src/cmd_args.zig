@@ -3,21 +3,20 @@ const Allocator = std.mem.Allocator;
 
 pub const CommandLineArgumentsArrayList = std.ArrayList(CommandLineArgument);
 
-pub fn Arg(comptime T: type) type {
-    return struct {
-        pub const ArgNode = struct {
-            next: ?*ArgNode,
+pub const Arg = struct {
+    pub const ArgNode = struct {
+        next: ?*ArgNode,
 
-            help: []const u8,
-            arg_prefix: []const u8,
-            required: bool,
-            default: T,
-        };
-
-        first: ?*ArgNode,
-        last: ?*ArgNode,
+        help: []const u8,
+        arg_prefix: []const u8,
+        required: bool,
+        default: []const u8,
+        default_type: enum { INT, BOOL, STRING },
     };
-}
+
+    first: ?*ArgNode,
+    last: ?*ArgNode,
+};
 
 pub fn myCreateArgsList(node: Arg) []Arg {
     _ = node;
