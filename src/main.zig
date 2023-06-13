@@ -39,8 +39,6 @@ pub fn main() !void {
         if (status == .leak) std.testing.expect(false) catch @panic("GeneralPurposeAllocator deinit failed");
     }
 
-    var rom: [:0]const u8 = "IBM Logo.ch8";
-
     var myArgList = cmd.Arg{
         .first = null,
         .last = null,
@@ -48,6 +46,7 @@ pub fn main() !void {
 
     var scaling_arg = cmd.Arg.ArgNode{
         .next = null,
+        .name = "scaling",
         .arg_prefix = "-s=",
         .help = "Set screen scaling. {2,4,8}",
         .required = true,
@@ -56,6 +55,7 @@ pub fn main() !void {
     };
     var rom_arg = cmd.Arg.ArgNode{
         .next = &scaling_arg,
+        .name = "rom",
         .arg_prefix = "-r=",
         .help = "Path to the ROM to load.",
         .required = true,
@@ -63,13 +63,15 @@ pub fn main() !void {
     var cycle_speed_arg = cmd.Arg.ArgNode{
         .next = &rom_arg,
         .arg_prefix = "-c=",
+        .name = "cycle",
         .help = "Set interpreter cycle speed.",
         .required = false,
         .default = "700",
         .default_type = .INT,
     };
     myArgList.first = &cycle_speed_arg;
-    try cmd.createCmdLineArgs(allocator, myArgList);
+    _ = try cmd.createCmdLineArgs(allocator, &myArgList);
+    const rom = if (rom_arg.value) |r| r else undefined;
 
     const now = try std.time.Instant.now();
     var random_generator = std.rand.DefaultPrng.init(now.timestamp);

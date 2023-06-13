@@ -5,20 +5,24 @@ pub const Arg = struct {
     pub const ArgNode = struct {
         next: ?*ArgNode,
 
+        name: []const u8,
         help: []const u8,
         arg_prefix: []const u8,
         required: bool = false,
         default: ?[]const u8 = undefined,
         default_type: ?enum { INT, BOOL, STRING } = undefined,
+        value: ?[]const u8 = undefined,
     };
 
     first: ?*ArgNode,
     last: ?*ArgNode,
 };
 
-pub fn createCmdLineArgs(allocator: Allocator, args: Arg) !void {
+pub fn createCmdLineArgs(allocator: Allocator, args: *Arg) !void {
     var cmd_args = try std.process.argsWithAllocator(allocator);
     defer cmd_args.deinit();
+    var argList = std.StringArrayHashMap([]const u8).init(allocator);
+    defer argList.deinit();
 
     var current_node = args.first;
     while (cmd_args.next()) |arg| {
@@ -29,8 +33,9 @@ pub fn createCmdLineArgs(allocator: Allocator, args: Arg) !void {
 
                 if (node.required and param.len == 0) {
                     std.debug.print("Required field {s} was not found.\n", .{node.arg_prefix});
-                    std.debug.print("{s}\n", .{node.help});
                     std.os.exit(0);
+                } else if (param.len > 0) {
+                    try argList.put(node.name, param);
                 }
             }
 
@@ -41,12 +46,11 @@ pub fn createCmdLineArgs(allocator: Allocator, args: Arg) !void {
     }
 }
 
-fn extractParam(param: [:0]const u8, pattern: []const u8) ?[]u8 {
+fn extractParam(param: [:0]const u8, pattern: []const u8) ?[]const u8 {
     const pattern_index = std.mem.indexOf(u8, param, pattern);
     if (pattern_index) |index| {
         const len = index + pattern.len;
-        var output: []u8 = undefined;
-        _ = std.mem.replace(u8, param[len..], "\"", "", output);
+        const output = if (std.mem.startsWith(u8, param, "\"") and std.mem.endsWith(u8, param, "\"")) param[len + 1 .. param.len - 2] else param;
         return output;
     }
 
