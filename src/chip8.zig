@@ -53,13 +53,14 @@ pub const Chip8 = struct {
     last_timestamp: u64 = 0,
     last_instruction_timestamp: u64 = 0,
     event: *engine.Event,
+    cycle_speed: u16 = 700,
 
     pub fn init(allocator: Allocator, random: std.rand.Random, event: *engine.Event) Chip8 {
         return Chip8{ .allocator = allocator, .random = random, .event = event };
     }
 
     // Clears memory and loads ROM into memory. Sets the Program Counter to the start of user addressable memory.
-    pub fn loadRom(self: *Self, filename: []const u8) !void {
+    pub fn loadRom(self: *Self, filename: []const u8, cycle_speed: ?u16) !void {
         const stat = try std.fs.cwd().statFile(filename);
         const data = try std.fs.cwd().readFileAlloc(self.allocator, filename, stat.size);
         defer self.allocator.free(data);
@@ -67,6 +68,7 @@ pub const Chip8 = struct {
         std.mem.copyForwards(u8, self.memory[FONT_ADDRESS..], &FONTS);
         std.mem.copyForwards(u8, self.memory[USER_MEMORY_ADDRESS..], data);
 
+        if (cycle_speed) |c| self.cycle_speed = c;
         self.program_counter = USER_MEMORY_ADDRESS;
     }
 

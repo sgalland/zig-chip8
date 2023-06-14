@@ -6,32 +6,7 @@ const chip8 = @import("chip8.zig");
 const engine = @import("engine.zig");
 const cmd = @import("cmd_args.zig");
 
-pub fn findDefaultRoms() ![]const u8 {
-    const known_working_roms = [_][]const u8{ "IBM Logo.ch8", "test_opcode.ch8" };
-
-    var buf: [std.fs.MAX_PATH_BYTES]u8 = undefined;
-    const cwd_path = try std.os.getcwd(&buf);
-
-    var directory = try std.fs.cwd().openIterableDir(cwd_path, .{});
-    defer directory.close();
-
-    var iterator = directory.iterate();
-    while (try iterator.next()) |file| {
-        if (file.kind != .file) continue;
-
-        for (known_working_roms) |rom| {
-            if (std.mem.endsWith(u8, file.name, ".ch8") and std.mem.eql(u8, file.name, rom))
-                return file.name;
-        }
-    }
-
-    return undefined;
-}
-
 pub fn main() !void {
-    // Make user configurable
-    const VIDEO_SCALE = 8;
-
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     var allocator = gpa.allocator();
     defer {
@@ -39,11 +14,7 @@ pub fn main() !void {
         if (status == .leak) std.testing.expect(false) catch @panic("GeneralPurposeAllocator deinit failed");
     }
 
-    var myArgList = cmd.Arg{
-        .first = null,
-        .last = null,
-    };
-
+    // Setup Command Line Arguments
     var scaling_arg = cmd.Arg.ArgNode{
         .next = null,
         .name = "scaling",
@@ -69,15 +40,21 @@ pub fn main() !void {
         .default = "700",
         .default_type = .INT,
     };
-    myArgList.first = &cycle_speed_arg;
-    _ = try cmd.createCmdLineArgs(allocator, &myArgList);
-    const rom = if (rom_arg.value) |r| r else undefined;
+    var cmd_args_list = cmd.Arg{
+        .first = &cycle_speed_arg,
+        .last = null,
+    };
+    try cmd.createCmdLineArgs(allocator, &cmd_args_list);
+    defer cmd.deinit(&cmd_args_list);
+    const rom = rom_arg.value;
+    const cycle = 700; //try std.fmt.parseInt(u16, cycle_speed_arg.value, 10);
+    const scale: u16 = 8; // try std.fmt.parseInt(u16, scaling_arg.value, 10);
 
     const now = try std.time.Instant.now();
     var random_generator = std.rand.DefaultPrng.init(now.timestamp);
     const random = random_generator.random();
 
-    var graphics = engine.Graphics.init("zCHIP8", chip8.DISPLAY_WIDTH * VIDEO_SCALE, chip8.DISPLAY_HEIGHT * VIDEO_SCALE, chip8.DISPLAY_WIDTH, chip8.DISPLAY_HEIGHT);
+    var graphics = engine.Graphics.init("zCHIP8", chip8.DISPLAY_WIDTH * scale, chip8.DISPLAY_HEIGHT * scale, chip8.DISPLAY_WIDTH, chip8.DISPLAY_HEIGHT);
     defer graphics.free();
 
     var events = [_]engine.EventType{.{ .@"0" = c.SDL_QUIT, .@"1" = false }};
@@ -85,7 +62,7 @@ pub fn main() !void {
 
     // Start emulation
     var instance = chip8.Chip8.init(allocator, random, &event_e);
-    try instance.loadRom(rom);
+    try instance.loadRom(rom, cycle);
 
     mainloop: while (true) {
         // Process events

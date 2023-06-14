@@ -10,32 +10,51 @@ pub const Arg = struct {
         arg_prefix: []const u8,
         required: bool = false,
         default: ?[]const u8 = undefined,
-        default_type: ?enum { INT, BOOL, STRING } = undefined,
-        value: ?[]const u8 = undefined,
+        default_type: ?enum { INT, FLOAT, BOOL, STRING } = undefined,
+        value: []u8 = undefined,
     };
 
+    allocator: Allocator = undefined,
     first: ?*ArgNode,
     last: ?*ArgNode,
 };
 
+pub fn deinit(args: *Arg) void {
+    var arg_item = args.first;
+    while (arg_item) |arg| {
+        args.allocator.free(arg.value);
+        arg_item = arg.next orelse null;
+    }
+}
+
 pub fn createCmdLineArgs(allocator: Allocator, args: *Arg) !void {
     var cmd_args = try std.process.argsWithAllocator(allocator);
     defer cmd_args.deinit();
-    var argList = std.StringArrayHashMap([]const u8).init(allocator);
-    defer argList.deinit();
+
+    args.allocator = allocator;
 
     var current_node = args.first;
     while (cmd_args.next()) |arg| {
-        std.debug.print("{s}\n", .{arg});
-        while (current_node.?.next) |node| {
+        while (current_node) |node| {
             if (std.mem.startsWith(u8, arg, node.arg_prefix)) {
-                const param = if (extractParam(arg, node.arg_prefix)) |p| p[0..] else "";
+                const extracted_param = if (extractParam(arg, node.arg_prefix)) |p| p[0..] else null;
 
-                if (node.required and param.len == 0) {
+                if (node.required and (extracted_param == null or extracted_param.?.len == 0)) {
                     std.debug.print("Required field {s} was not found.\n", .{node.arg_prefix});
                     std.os.exit(0);
-                } else if (param.len > 0) {
-                    try argList.put(node.name, param);
+                } else if (extracted_param) |param| {
+                    const param_data = try args.allocator.alloc(u8, param.len);
+
+                    for (param, 0..param.len) |c, i| {
+                        param_data[i] = c;
+                    }
+
+                    node.value = param_data;
+                } else if (node.default) |default_value| {
+                    _ = default_value;
+                    std.debug.print("can you see that\n", .{});
+                    // std.debug.print("found default={s}\n", .{default_value});
+                    // node.value = default_value;
                 }
             }
 
@@ -50,7 +69,8 @@ fn extractParam(param: [:0]const u8, pattern: []const u8) ?[]const u8 {
     const pattern_index = std.mem.indexOf(u8, param, pattern);
     if (pattern_index) |index| {
         const len = index + pattern.len;
-        const output = if (std.mem.startsWith(u8, param, "\"") and std.mem.endsWith(u8, param, "\"")) param[len + 1 .. param.len - 2] else param;
+        const post_pattern = param[len..];
+        const output = if (std.mem.startsWith(u8, post_pattern, "\"") and std.mem.endsWith(u8, post_pattern, "\"")) post_pattern[1 .. post_pattern.len - 1] else post_pattern;
         return output;
     }
 
