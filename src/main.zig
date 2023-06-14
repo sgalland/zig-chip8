@@ -44,8 +44,8 @@ pub fn main() !void {
         .first = &cycle_speed_arg,
         .last = null,
     };
-    try cmd.createCmdLineArgs(allocator, &cmd_args_list);
-    defer cmd.deinit(&cmd_args_list);
+    try cmd.processCommandLineArgs(allocator, &cmd_args_list);
+    defer cmd_args_list.deinit();
     const rom = rom_arg.value;
     const cycle = 700; //try std.fmt.parseInt(u16, cycle_speed_arg.value, 10);
     const scale: u16 = 8; // try std.fmt.parseInt(u16, scaling_arg.value, 10);

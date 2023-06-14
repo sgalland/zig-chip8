@@ -2,6 +2,8 @@ const std = @import("std");
 const Allocator = std.mem.Allocator;
 
 pub const Arg = struct {
+    const Self = @This();
+
     pub const ArgNode = struct {
         next: ?*ArgNode,
 
@@ -17,17 +19,17 @@ pub const Arg = struct {
     allocator: Allocator = undefined,
     first: ?*ArgNode,
     last: ?*ArgNode,
+
+    pub fn deinit(self: *Self) void {
+        var arg_item = self.first;
+        while (arg_item) |arg| {
+            // self.allocator.free(arg.value);
+            arg_item = arg.next orelse null;
+        }
+    }
 };
 
-pub fn deinit(args: *Arg) void {
-    var arg_item = args.first;
-    while (arg_item) |arg| {
-        args.allocator.free(arg.value);
-        arg_item = arg.next orelse null;
-    }
-}
-
-pub fn createCmdLineArgs(allocator: Allocator, args: *Arg) !void {
+pub fn processCommandLineArgs(allocator: Allocator, args: *Arg) !void {
     var cmd_args = try std.process.argsWithAllocator(allocator);
     defer cmd_args.deinit();
 
@@ -52,9 +54,9 @@ pub fn createCmdLineArgs(allocator: Allocator, args: *Arg) !void {
                     node.value = param_data;
                 } else if (node.default) |default_value| {
                     _ = default_value;
-                    std.debug.print("can you see that\n", .{});
+                    // std.debug.print("can you see that\n", .{});
                     // std.debug.print("found default={s}\n", .{default_value});
-                    // node.value = default_value;
+                    // node.value = @constCast(default_value);
                 }
             }
 
