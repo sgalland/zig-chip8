@@ -4,56 +4,58 @@ const c = @cImport({
 });
 const chip8 = @import("chip8.zig");
 const engine = @import("engine.zig");
-
-pub fn findDefaultRoms() ![]const u8 {
-    const known_working_roms = [_][]const u8{ "IBM Logo.ch8", "test_opcode.ch8" };
-
-    var buf: [std.fs.MAX_PATH_BYTES]u8 = undefined;
-    const cwd_path = try std.os.getcwd(&buf);
-
-    var directory = try std.fs.cwd().openIterableDir(cwd_path, .{});
-    defer directory.close();
-
-    var iterator = directory.iterate();
-    while (try iterator.next()) |file| {
-        if (file.kind != .file) continue;
-
-        for (known_working_roms) |rom| {
-            if (std.mem.endsWith(u8, file.name, ".ch8") and std.mem.eql(u8, file.name, rom))
-                return file.name;
-        }
-    }
-
-    return undefined;
-}
+const cmd = @import("cmd_args.zig");
 
 pub fn main() !void {
-    // Make user configurable
-    const VIDEO_SCALE = 8;
-
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    const allocator = gpa.allocator();
+    var allocator = gpa.allocator();
     defer {
         const status = gpa.deinit();
         if (status == .leak) std.testing.expect(false) catch @panic("GeneralPurposeAllocator deinit failed");
     }
 
-    var cmd_args = try std.process.argsWithAllocator(allocator);
-    defer cmd_args.deinit();
-
-    var rom = "Space Invaders [David Winter].ch8";
-    // var rom: []const u8 = try findDefaultRoms();
-
-    // while (cmd_args.next()) |arg| {
-    //     std.debug.print("Command line arg: {s}\n", .{arg});
-    //     if (std.mem.endsWith(u8, arg, ".ch8")) rom = arg[0..];
-    // }
+    // Setup Command Line Arguments
+    var scaling_arg = cmd.Arg.ArgNode{
+        .next = null,
+        .name = "scaling",
+        .arg_prefix = "-s ",
+        .help = "Set screen scaling.",
+        .required = false,
+        .default = "8",
+        .default_type = .INT,
+        // .valid_values = .{ "2", "4", "8" },
+    };
+    var rom_arg = cmd.Arg.ArgNode{
+        .next = &scaling_arg,
+        .name = "rom",
+        .arg_prefix = "-r ",
+        .help = "Path to the ROM to load.",
+        .required = true,
+    };
+    var cycle_speed_arg = cmd.Arg.ArgNode{
+        .next = &rom_arg,
+        .arg_prefix = "-c ",
+        .name = "cycle",
+        .help = "Set interpreter cycle speed.",
+        .required = false,
+        .default = "700",
+        .default_type = .INT,
+    };
+    var cmd_args_list = cmd.Arg{
+        .first = &cycle_speed_arg,
+        .last = &scaling_arg,
+    };
+    try cmd.processCommandLineArgs(allocator, &cmd_args_list);
+    defer cmd_args_list.deinit();
+    const rom = rom_arg.value;
+    const cycle = try std.fmt.parseInt(u16, cycle_speed_arg.value, 10);
+    const scale = try std.fmt.parseInt(u16, scaling_arg.value, 10);
 
     const now = try std.time.Instant.now();
     var random_generator = std.rand.DefaultPrng.init(now.timestamp);
     const random = random_generator.random();
 
-    var graphics = engine.Graphics.init("zCHIP8", chip8.DISPLAY_WIDTH * VIDEO_SCALE, chip8.DISPLAY_HEIGHT * VIDEO_SCALE, chip8.DISPLAY_WIDTH, chip8.DISPLAY_HEIGHT);
+    var graphics = engine.Graphics.init("zCHIP8", chip8.DISPLAY_WIDTH * scale, chip8.DISPLAY_HEIGHT * scale, chip8.DISPLAY_WIDTH, chip8.DISPLAY_HEIGHT);
     defer graphics.free();
 
     var events = [_]engine.EventType{.{ .@"0" = c.SDL_QUIT, .@"1" = false }};
@@ -61,7 +63,7 @@ pub fn main() !void {
 
     // Start emulation
     var instance = chip8.Chip8.init(allocator, random, &event_e);
-    try instance.loadRom(rom);
+    try instance.loadRom(rom, cycle);
 
     mainloop: while (true) {
         // Process events
