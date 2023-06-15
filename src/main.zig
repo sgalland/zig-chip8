@@ -47,8 +47,8 @@ pub fn main() !void {
     try cmd.processCommandLineArgs(allocator, &cmd_args_list);
     defer cmd_args_list.deinit();
     const rom = rom_arg.value;
-    const cycle = 700; //try std.fmt.parseInt(u16, cycle_speed_arg.value, 10);
-    const scale: u16 = 8; // try std.fmt.parseInt(u16, scaling_arg.value, 10);
+    const cycle = try std.fmt.parseInt(u16, cycle_speed_arg.value, 10);
+    const scale = try std.fmt.parseInt(u16, scaling_arg.value, 10);
 
     const now = try std.time.Instant.now();
     var random_generator = std.rand.DefaultPrng.init(now.timestamp);

@@ -13,7 +13,8 @@ pub const Arg = struct {
         required: bool = false,
         default: ?[]const u8 = undefined,
         default_type: ?enum { INT, FLOAT, BOOL, STRING } = undefined,
-        value: []u8 = undefined,
+        value: []const u8 = undefined,
+        value_len: usize = 0,
     };
 
     allocator: Allocator = undefined,
@@ -23,7 +24,8 @@ pub const Arg = struct {
     pub fn deinit(self: *Self) void {
         var arg_item = self.first;
         while (arg_item) |arg| {
-            // self.allocator.free(arg.value);
+            if (arg.value_len > 0)
+                self.allocator.free(arg.value);
             arg_item = arg.next orelse null;
         }
     }
@@ -35,9 +37,17 @@ pub fn processCommandLineArgs(allocator: Allocator, args: *Arg) !void {
 
     args.allocator = allocator;
 
-    var current_node = args.first;
+    var args_list = std.ArrayList([:0]const u8).init(args.allocator);
+    defer args_list.clearAndFree();
+
     while (cmd_args.next()) |arg| {
-        while (current_node) |node| {
+        try args_list.append(arg);
+    }
+
+    var current_node = args.first;
+    while (current_node) |node| {
+        for (args_list.items) |arg| {
+            std.debug.print(">> node={s}, arg={s} <<\n", .{ node.arg_prefix, arg });
             if (std.mem.startsWith(u8, arg, node.arg_prefix)) {
                 const extracted_param = if (extractParam(arg, node.arg_prefix)) |p| p[0..] else null;
 
@@ -46,24 +56,32 @@ pub fn processCommandLineArgs(allocator: Allocator, args: *Arg) !void {
                     std.os.exit(0);
                 } else if (extracted_param) |param| {
                     const param_data = try args.allocator.alloc(u8, param.len);
+                    @memcpy(param_data, param);
 
-                    for (param, 0..param.len) |c, i| {
-                        param_data[i] = c;
-                    }
+                    // for (param, 0..param.len) |c, i| {
+                    //     param_data[i] = c;
+                    // }
 
                     node.value = param_data;
-                } else if (node.default) |default_value| {
-                    _ = default_value;
-                    // std.debug.print("can you see that\n", .{});
-                    // std.debug.print("found default={s}\n", .{default_value});
-                    // node.value = @constCast(default_value);
+                    node.value_len = param_data.len;
                 }
             }
 
-            current_node = current_node.?.next;
+            if (node.default) |default_value| {
+                const param_data = try args.allocator.alloc(u8, default_value.len);
+                @memcpy(param_data, default_value);
+                // for (default_value, 0..default_value.len) |c, i| {
+                //     param_data[i] = c;
+                // }
+
+                node.value = param_data;
+                node.value_len = param_data.len;
+            }
         }
 
-        current_node = args.first;
+        current_node = current_node.?.next;
+
+        // current_node = args.first;
     }
 }
 
