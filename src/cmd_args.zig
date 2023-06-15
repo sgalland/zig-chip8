@@ -33,8 +33,12 @@ pub const Arg = struct {
 
 pub fn printHelp(args: Arg) void {
     var arg_item = args.first;
+
+    std.debug.print("Usage: zig-chp8.exe [prefix] [parameter]\n\n", .{});
+    std.debug.print("{s:<10} {s:<10} {s:<10} {s:<40}\n", .{ "Prefix:", "Name:", "Required:", "Explanation:" });
+
     while (arg_item) |arg| {
-        std.debug.print("\t{s}\t{s}\n", .{ arg.arg_prefix, arg.help });
+        std.debug.print("{s:<10} {s:<10} {any:<10} {s:<40}\n", .{ arg.arg_prefix, arg.name, arg.required, arg.help });
         arg_item = arg.next orelse null;
     }
 }
@@ -50,6 +54,11 @@ pub fn processCommandLineArgs(allocator: Allocator, args: *Arg) !void {
 
     while (cmd_args.next()) |arg| {
         try args_list.append(arg);
+
+        if (std.mem.startsWith(u8, arg, "-h")) {
+            printHelp(args.*);
+            std.os.exit(0);
+        }
     }
 
     var current_node = args.first;
