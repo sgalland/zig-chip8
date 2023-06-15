@@ -42,7 +42,7 @@ pub fn main() !void {
     };
     var cmd_args_list = cmd.Arg{
         .first = &cycle_speed_arg,
-        .last = null,
+        .last = &scaling_arg,
     };
     try cmd.processCommandLineArgs(allocator, &cmd_args_list);
     defer cmd_args_list.deinit();

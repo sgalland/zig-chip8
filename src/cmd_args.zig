@@ -24,8 +24,8 @@ pub const Arg = struct {
     pub fn deinit(self: *Self) void {
         var arg_item = self.first;
         while (arg_item) |arg| {
-            if (arg.value_len > 0)
-                self.allocator.free(arg.value);
+            std.debug.print("={}, ={}\n", .{ arg.value.len, arg.value_len });
+            if (arg.value_len > 0) self.allocator.free(arg.value);
             arg_item = arg.next orelse null;
         }
     }
@@ -47,7 +47,6 @@ pub fn processCommandLineArgs(allocator: Allocator, args: *Arg) !void {
     var current_node = args.first;
     while (current_node) |node| {
         for (args_list.items) |arg| {
-            std.debug.print(">> node={s}, arg={s} <<\n", .{ node.arg_prefix, arg });
             if (std.mem.startsWith(u8, arg, node.arg_prefix)) {
                 const extracted_param = if (extractParam(arg, node.arg_prefix)) |p| p[0..] else null;
 
@@ -58,30 +57,23 @@ pub fn processCommandLineArgs(allocator: Allocator, args: *Arg) !void {
                     const param_data = try args.allocator.alloc(u8, param.len);
                     @memcpy(param_data, param);
 
-                    // for (param, 0..param.len) |c, i| {
-                    //     param_data[i] = c;
-                    // }
-
                     node.value = param_data;
                     node.value_len = param_data.len;
                 }
             }
 
-            if (node.default) |default_value| {
-                const param_data = try args.allocator.alloc(u8, default_value.len);
-                @memcpy(param_data, default_value);
-                // for (default_value, 0..default_value.len) |c, i| {
-                //     param_data[i] = c;
-                // }
+            if (node.value_len == 0) {
+                if (node.default) |default_value| {
+                    const param_data = try args.allocator.alloc(u8, default_value.len);
+                    @memcpy(param_data, default_value);
 
-                node.value = param_data;
-                node.value_len = param_data.len;
+                    node.value = param_data;
+                    node.value_len = default_value.len;
+                }
             }
         }
 
         current_node = current_node.?.next;
-
-        // current_node = args.first;
     }
 }
 
@@ -96,29 +88,3 @@ fn extractParam(param: [:0]const u8, pattern: []const u8) ?[]const u8 {
 
     return null;
 }
-
-// //TODO: Need to move argument checking to another file
-// while (cmd_args.next()) |arg| {
-//     std.debug.print("Command line arg: {s}\n", .{arg});
-
-//     if (std.mem.startsWith(u8, arg, "-r=")) {
-//         const rom_name = extractParam(arg, "-r=");
-//         if (rom_name) |name| {
-//             var trimmed_name: []u8 = undefined;
-
-//             if (std.mem.containsAtLeast(u8, name, 1, "\"")) {
-//                 _ = std.mem.replace(u8, name, "\"", "", trimmed_name);
-//             } else {
-//                 std.mem.copyForwards(u8, trimmed_name, name);
-//             }
-
-//             rom = @ptrCast([:0]const u8, trimmed_name);
-//         }
-//     }
-// }
-
-// if (rom.len == 0) {
-//     std.debug.print("A rom is required. Please specify with -r=\"<rom name>\"\n", .{});
-//     std.os.exit(0);
-// }
-// //TODO: Need to move argument checking to another file
