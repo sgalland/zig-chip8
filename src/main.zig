@@ -18,22 +18,23 @@ pub fn main() !void {
     var scaling_arg = cmd.Arg.ArgNode{
         .next = null,
         .name = "scaling",
-        .arg_prefix = "-s=",
-        .help = "Set screen scaling. {2,4,8}",
-        .required = true,
+        .arg_prefix = "-s ",
+        .help = "Set screen scaling.",
+        .required = false,
         .default = "8",
         .default_type = .INT,
+        // .valid_values = .{ "2", "4", "8" },
     };
     var rom_arg = cmd.Arg.ArgNode{
         .next = &scaling_arg,
         .name = "rom",
-        .arg_prefix = "-r=",
+        .arg_prefix = "-r ",
         .help = "Path to the ROM to load.",
         .required = true,
     };
     var cycle_speed_arg = cmd.Arg.ArgNode{
         .next = &rom_arg,
-        .arg_prefix = "-c=",
+        .arg_prefix = "-c ",
         .name = "cycle",
         .help = "Set interpreter cycle speed.",
         .required = false,

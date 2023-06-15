@@ -13,6 +13,7 @@ pub const Arg = struct {
         required: bool = false,
         default: ?[]const u8 = undefined,
         default_type: ?enum { INT, FLOAT, BOOL, STRING } = undefined,
+        valid_values: [][]const u8 = undefined,
         value: []const u8 = undefined,
         value_len: usize = 0,
     };
@@ -24,12 +25,19 @@ pub const Arg = struct {
     pub fn deinit(self: *Self) void {
         var arg_item = self.first;
         while (arg_item) |arg| {
-            std.debug.print("={}, ={}\n", .{ arg.value.len, arg.value_len });
             if (arg.value_len > 0) self.allocator.free(arg.value);
             arg_item = arg.next orelse null;
         }
     }
 };
+
+pub fn printHelp(args: Arg) void {
+    var arg_item = args.first;
+    while (arg_item) |arg| {
+        std.debug.print("\t{s}\t{s}\n", .{ arg.arg_prefix, arg.help });
+        arg_item = arg.next orelse null;
+    }
+}
 
 pub fn processCommandLineArgs(allocator: Allocator, args: *Arg) !void {
     var cmd_args = try std.process.argsWithAllocator(allocator);
@@ -50,10 +58,7 @@ pub fn processCommandLineArgs(allocator: Allocator, args: *Arg) !void {
             if (std.mem.startsWith(u8, arg, node.arg_prefix)) {
                 const extracted_param = if (extractParam(arg, node.arg_prefix)) |p| p[0..] else null;
 
-                if (node.required and (extracted_param == null or extracted_param.?.len == 0)) {
-                    std.debug.print("Required field {s} was not found.\n", .{node.arg_prefix});
-                    std.os.exit(0);
-                } else if (extracted_param) |param| {
+                if (extracted_param) |param| {
                     const param_data = try args.allocator.alloc(u8, param.len);
                     @memcpy(param_data, param);
 
@@ -61,15 +66,19 @@ pub fn processCommandLineArgs(allocator: Allocator, args: *Arg) !void {
                     node.value_len = param_data.len;
                 }
             }
+        }
 
-            if (node.value_len == 0) {
-                if (node.default) |default_value| {
-                    const param_data = try args.allocator.alloc(u8, default_value.len);
-                    @memcpy(param_data, default_value);
+        if (node.required and node.value_len == 0) {
+            std.debug.print("\nRequired parameter {s} was not found.\n\n", .{node.arg_prefix});
+            printHelp(args.*);
+            std.os.exit(0);
+        } else if (node.value_len == 0) {
+            if (node.default) |default_value| {
+                const param_data = try args.allocator.alloc(u8, default_value.len);
+                @memcpy(param_data, default_value);
 
-                    node.value = param_data;
-                    node.value_len = default_value.len;
-                }
+                node.value = param_data;
+                node.value_len = default_value.len;
             }
         }
 
