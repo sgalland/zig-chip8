@@ -65,19 +65,15 @@ pub fn main() !void {
     var instance = chip8.Chip8.init(allocator, random, &event_e);
     try instance.loadRom(rom, cycle);
 
-    mainloop: while (true) {
+    var is_running = true;
+    mainloop: while (is_running) {
         // Process events
-        var event: c.SDL_Event = undefined;
-        while (c.SDL_PollEvent(&event) != 0) {
-            switch (event.type) {
-                c.SDL_QUIT => break :mainloop,
-                else => {},
-            }
-        }
+        var keys: [16]bool = [_]bool{false} ** 16;
+        is_running = !engine.Event.getKeys(&keys);
 
-        if (event_e.getKeyPressed(c.SDL_SCANCODE_ESCAPE)) break :mainloop;
+        if (!is_running) break :mainloop;
 
-        instance.cycle(@intCast(u64, std.time.milliTimestamp()));
+        instance.cycle(@intCast(u64, std.time.milliTimestamp()), keys);
 
         graphics.update(&instance.video);
     }
