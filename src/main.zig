@@ -58,15 +58,14 @@ pub fn main() !void {
     var graphics = engine.Graphics.init("zCHIP8", chip8.DISPLAY_WIDTH * scale, chip8.DISPLAY_HEIGHT * scale, chip8.DISPLAY_WIDTH, chip8.DISPLAY_HEIGHT);
     defer graphics.free();
 
-    var events = [_]engine.EventType{.{ .@"0" = c.SDL_QUIT, .@"1" = false }};
-    var event_e = engine.Event.init(&events);
+    engine.Event.init();
 
     // Start emulation
-    var instance = chip8.Chip8.init(allocator, random, &event_e);
+    var instance = chip8.Chip8.init(allocator, random);
     try instance.loadRom(rom, cycle);
 
-    var is_running = true;
-    mainloop: while (is_running) {
+    mainloop: while (true) {
+        const is_running = engine.Event.pollEvents();
         if (!is_running) break :mainloop;
 
         instance.cycle(@intCast(u64, std.time.milliTimestamp()));

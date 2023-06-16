@@ -52,11 +52,10 @@ pub const Chip8 = struct {
     // Emulator internals
     last_timestamp: u64 = 0,
     last_instruction_timestamp: u64 = 0,
-    event: *engine.Event,
     cycle_speed: u16 = 700,
 
-    pub fn init(allocator: Allocator, random: std.rand.Random, event: *engine.Event) Chip8 {
-        return Chip8{ .allocator = allocator, .random = random, .event = event };
+    pub fn init(allocator: Allocator, random: std.rand.Random) Chip8 {
+        return Chip8{ .allocator = allocator, .random = random };
     }
 
     // Clears memory and loads ROM into memory. Sets the Program Counter to the start of user addressable memory.
@@ -227,11 +226,18 @@ pub const Chip8 = struct {
                     switch (nn) {
                         // Ex9E - SKP Vx
                         0x9E => {
-                            if (self.event.getScancodePressed(self.registers[x])) self.program_counter += 2;
+                            if (engine.Event.getScancodePressed(self.registers[x])) self.program_counter += 2;
                         },
                         // ExA1 - SKNP Vx
                         0xA1 => {
-                            if (!self.event.getScancodePressed(self.registers[x])) self.program_counter += 2;
+                            // TODO: Fix me
+                            var keys: [16]bool = undefined;
+                            _ = engine.Event.waitKey(&keys, false);
+                            std.debug.print("keys={any}\n", .{keys});
+                            if (!keys[self.registers[x]]) {
+                                self.program_counter += 2;
+                            }
+                            // if (!engine.Event.getScancodePressed(self.registers[x])) self.program_counter += 2;
                         },
                         else => unreachable,
                     }
@@ -244,9 +250,7 @@ pub const Chip8 = struct {
                         0x0A => {
                             // retrieve the next keypress and store it in VX
                             var keys: [16]bool = undefined;
-                            if (engine.Event.waitKey(&keys)) {
-                                std.os.exit(9);
-                            }
+                            _ = engine.Event.waitKey(&keys, true);
 
                             for (keys, 0..) |key_pressed, index| {
                                 if (key_pressed) {

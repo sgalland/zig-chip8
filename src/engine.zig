@@ -49,29 +49,25 @@ pub const Graphics = struct {
     }
 };
 
-pub const EventType = std.meta.Tuple(&.{ u32, bool });
-
 pub const Event = struct {
     const Self = @This();
 
-    events: []EventType,
 
-    pub fn init(events: []EventType) Self {
+    pub fn init() void {
         if (c.SDL_Init(c.SDL_INIT_EVENTS) != 0) {
             std.debug.print("SDL failed to initialize: {s}\n", .{c.SDL_GetError()});
             std.os.exit(0);
         }
-
-        return Event{ .events = events };
     }
 
-    pub fn waitKey(keys: *[16]bool) bool {
+    // TODO: Rename to something else
+    pub fn waitKey(keys: *[16]bool, should_wait: bool) bool {
         var event: c.SDL_Event = undefined;
         var quit = false;
         var waiting = true;
 
         while (waiting) {
-            c.SDL_PumpEvents();
+            // c.SDL_PumpEvents();
 
             while (c.SDL_PollEvent(&event) != 0) {
                 switch (event.type) {
@@ -125,26 +121,27 @@ pub const Event = struct {
                     else => {},
                 }
             }
+
+            if (!should_wait) 
+                waiting = false;
         }
 
         return quit;
     }
 
-    pub fn getKeyPressed(self: *Self, key_pressed: u32) bool {
-        _ = self;
-
+    pub fn getKeyPressed(key_pressed: u32) bool {
         c.SDL_PumpEvents();
         const key_state = c.SDL_GetKeyboardState(null);
         return key_state[key_pressed] > 0;
     }
 
-    pub fn getScancodePressed(self: *Self, scancode: u32) bool {
-        _ = self;
-
+    // TODO: This is not polling correctly.
+    pub fn getScancodePressed(scancode: u32) bool {
         var event: c.SDL_Event = undefined;
         while (c.SDL_PollEvent(&event) != 0) {
             switch (event.type) {
                 c.SDL_KEYDOWN => {
+                    std.debug.print("scancode recieved: {}, scancode wanted: {}\n", .{event.key.keysym.scancode, scancode});
                     if (event.key.keysym.scancode == scancode) return true;
                 },
                 else => {},
@@ -154,5 +151,24 @@ pub const Event = struct {
         return false;
     }
 
-    pub fn getCurrentKeyPress() void {}
+    pub fn pollEvents() bool {
+
+        var event: c.SDL_Event = undefined;
+        var is_running = true;
+
+        while (c.SDL_PollEvent(&event) != 0) {
+            switch (event.type) {
+                c.SDL_QUIT => is_running = false,
+                c.SDL_KEYDOWN => {
+                    switch (event.key.keysym.sym) {
+                        c.SDLK_ESCAPE => is_running = false,
+                        else => {},
+                    }
+                },
+                else => {},
+            }
+        }
+        
+        return is_running;
+    }
 };
