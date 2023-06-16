@@ -69,7 +69,7 @@ pub fn main() !void {
     mainloop: while (is_running) {
         // Process events
         var keys: [16]bool = [_]bool{false} ** 16;
-        is_running = !engine.Event.getKeys(&keys);
+        // is_running = !engine.Event.getKeys(&keys);
 
         if (!is_running) break :mainloop;
 

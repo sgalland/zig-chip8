@@ -74,6 +74,7 @@ pub const Chip8 = struct {
 
     // Executes the interpreter at a rate of 60 timers per second. Must in in a loop outside of this function.
     pub fn cycle(self: *Self, current_timestamp: u64, keys: [16]bool) void {
+        _ = keys;
         // Timers decrement at a rate of 60 times per second (every 16.66666666ms).
         // If value of the timer is greater than 0, decrement it
         const cycle_speed = std.time.ms_per_s / 60;
@@ -84,7 +85,7 @@ pub const Chip8 = struct {
             self.last_timestamp = current_timestamp;
         }
 
-        const instruction_speed = std.time.ms_per_s / 700;
+        const instruction_speed = std.time.ms_per_s / self.cycle_speed;
         if (current_timestamp - self.last_instruction_timestamp > instruction_speed) {
             self.last_instruction_timestamp = current_timestamp;
 
@@ -244,7 +245,12 @@ pub const Chip8 = struct {
                         0x0A => {
                             // retrieve the next keypress and store it in VX
                             var keycode: u8 = undefined;
-                            for (keys, 0..) |key_pressed, index| {
+                            var keys_pp: [16]bool = undefined;
+                            if (engine.Event.waitKey(&keys_pp)) {
+                                std.os.exit(9);
+                            }
+
+                            for (keys_pp, 0..) |key_pressed, index| {
                                 if (key_pressed) {
                                     keycode = @intCast(u8, index);
                                     break;
