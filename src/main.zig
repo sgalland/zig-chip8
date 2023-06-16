@@ -67,13 +67,9 @@ pub fn main() !void {
 
     var is_running = true;
     mainloop: while (is_running) {
-        // Process events
-        var keys: [16]bool = [_]bool{false} ** 16;
-        // is_running = !engine.Event.getKeys(&keys);
-
         if (!is_running) break :mainloop;
 
-        instance.cycle(@intCast(u64, std.time.milliTimestamp()), keys);
+        instance.cycle(@intCast(u64, std.time.milliTimestamp()));
 
         graphics.update(&instance.video);
     }
