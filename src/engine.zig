@@ -52,7 +52,6 @@ pub const Graphics = struct {
 pub const Event = struct {
     const Self = @This();
 
-
     pub fn init() void {
         if (c.SDL_Init(c.SDL_INIT_EVENTS) != 0) {
             std.debug.print("SDL failed to initialize: {s}\n", .{c.SDL_GetError()});
@@ -67,9 +66,7 @@ pub const Event = struct {
         var waiting = true;
 
         while (waiting) {
-            // c.SDL_PumpEvents();
-
-            while (c.SDL_PollEvent(&event) != 0) {
+            while (c.SDL_PollEvent(&event) == 1) {
                 switch (event.type) {
                     c.SDL_QUIT => quit = true,
                     c.SDL_KEYDOWN => {
@@ -122,7 +119,7 @@ pub const Event = struct {
                 }
             }
 
-            if (!should_wait) 
+            if (!should_wait)
                 waiting = false;
         }
 
@@ -141,7 +138,7 @@ pub const Event = struct {
         while (c.SDL_PollEvent(&event) != 0) {
             switch (event.type) {
                 c.SDL_KEYDOWN => {
-                    std.debug.print("scancode recieved: {}, scancode wanted: {}\n", .{event.key.keysym.scancode, scancode});
+                    std.debug.print("scancode recieved: {}, scancode wanted: {}\n", .{ event.key.keysym.scancode, scancode });
                     if (event.key.keysym.scancode == scancode) return true;
                 },
                 else => {},
@@ -151,24 +148,26 @@ pub const Event = struct {
         return false;
     }
 
-    pub fn pollEvents() bool {
+    pub fn checkForQuit() bool {
+        var quit = false;
 
-        var event: c.SDL_Event = undefined;
-        var is_running = true;
+        c.SDL_PumpEvents();
+        var events: [1]c.SDL_Event = .{};
+        _ = c.SDL_PeepEvents(&events, events.len, c.SDL_PEEKEVENT, c.SDL_KEYDOWN, c.SDL_KEYDOWN);
 
-        while (c.SDL_PollEvent(&event) != 0) {
+        for (events) |event| {
             switch (event.type) {
-                c.SDL_QUIT => is_running = false,
+                c.SDL_QUIT => quit = true,
                 c.SDL_KEYDOWN => {
                     switch (event.key.keysym.sym) {
-                        c.SDLK_ESCAPE => is_running = false,
+                        c.SDLK_ESCAPE => quit = true,
                         else => {},
                     }
                 },
                 else => {},
             }
         }
-        
-        return is_running;
+
+        return quit;
     }
 };

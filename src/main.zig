@@ -65,8 +65,8 @@ pub fn main() !void {
     try instance.loadRom(rom, cycle);
 
     mainloop: while (true) {
-        const is_running = engine.Event.pollEvents();
-        if (!is_running) break :mainloop;
+        const quit = engine.Event.checkForQuit();
+        if (quit) break :mainloop;
 
         instance.cycle(@intCast(u64, std.time.milliTimestamp()));
 

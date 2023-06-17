@@ -231,7 +231,7 @@ pub const Chip8 = struct {
                         // ExA1 - SKNP Vx
                         0xA1 => {
                             // TODO: Fix me
-                            var keys: [16]bool = undefined;
+                            var keys: [16]bool = [_]bool{false} ** 16;
                             _ = engine.Event.waitKey(&keys, false);
                             std.debug.print("keys={any}\n", .{keys});
                             if (!keys[self.registers[x]]) {
