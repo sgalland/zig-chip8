@@ -60,107 +60,53 @@ pub const Event = struct {
     }
 
     // TODO: Rename to something else
-    pub fn waitKey(keys: *[16]bool, should_wait: bool) bool {
+    pub fn waitKey(keys: *[16]bool) bool {
         var event: c.SDL_Event = undefined;
         var quit = false;
-        var waiting = true;
 
-        while (waiting) {
-            while (c.SDL_PollEvent(&event) == 1) {
-                switch (event.type) {
-                    c.SDL_QUIT => quit = true,
-                    c.SDL_KEYDOWN => {
-                        waiting = false;
-                        switch (event.key.keysym.sym) {
-                            c.SDLK_ESCAPE => quit = true,
-                            c.SDLK_1 => keys[0x01] = true,
-                            c.SDLK_2 => keys[0x02] = true,
-                            c.SDLK_3 => keys[0x03] = true,
-                            c.SDLK_4 => keys[0x0C] = true,
-                            c.SDLK_q => keys[0x04] = true,
-                            c.SDLK_w => keys[0x05] = true,
-                            c.SDLK_e => keys[0x06] = true,
-                            c.SDLK_r => keys[0x0D] = true,
-                            c.SDLK_a => keys[0x07] = true,
-                            c.SDLK_s => keys[0x08] = true,
-                            c.SDLK_d => keys[0x09] = true,
-                            c.SDLK_f => keys[0x0E] = true,
-                            c.SDLK_z => keys[0x0A] = true,
-                            c.SDLK_x => keys[0x00] = true,
-                            c.SDLK_c => keys[0x0B] = true,
-                            c.SDLK_v => keys[0x0F] = true,
-                            else => {
-                                waiting = true;
-                            },
-                        }
-                    },
-                    c.SDL_KEYUP => {
-                        switch (event.key.keysym.sym) {
-                            c.SDLK_1 => keys[0x01] = false,
-                            c.SDLK_2 => keys[0x02] = false,
-                            c.SDLK_3 => keys[0x03] = false,
-                            c.SDLK_4 => keys[0x0C] = false,
-                            c.SDLK_q => keys[0x04] = false,
-                            c.SDLK_w => keys[0x05] = false,
-                            c.SDLK_e => keys[0x06] = false,
-                            c.SDLK_r => keys[0x0D] = false,
-                            c.SDLK_a => keys[0x07] = false,
-                            c.SDLK_s => keys[0x08] = false,
-                            c.SDLK_d => keys[0x09] = false,
-                            c.SDLK_f => keys[0x0E] = false,
-                            c.SDLK_z => keys[0x0A] = false,
-                            c.SDLK_x => keys[0x00] = false,
-                            c.SDLK_c => keys[0x0B] = false,
-                            c.SDLK_v => keys[0x0F] = false,
-                            else => {},
-                        }
-                    },
-                    else => {},
-                }
-            }
-
-            if (!should_wait)
-                waiting = false;
-        }
-
-        return quit;
-    }
-
-    pub fn getKeyPressed(key_pressed: u32) bool {
-        c.SDL_PumpEvents();
-        const key_state = c.SDL_GetKeyboardState(null);
-        return key_state[key_pressed] > 0;
-    }
-
-    // TODO: This is not polling correctly.
-    pub fn getScancodePressed(scancode: u32) bool {
-        var event: c.SDL_Event = undefined;
-        while (c.SDL_PollEvent(&event) != 0) {
-            switch (event.type) {
-                c.SDL_KEYDOWN => {
-                    std.debug.print("scancode recieved: {}, scancode wanted: {}\n", .{ event.key.keysym.scancode, scancode });
-                    if (event.key.keysym.scancode == scancode) return true;
-                },
-                else => {},
-            }
-        }
-
-        return false;
-    }
-
-    pub fn checkForQuit() bool {
-        var quit = false;
-
-        c.SDL_PumpEvents();
-        var events: [1]c.SDL_Event = .{};
-        _ = c.SDL_PeepEvents(&events, events.len, c.SDL_PEEKEVENT, c.SDL_KEYDOWN, c.SDL_KEYDOWN);
-
-        for (events) |event| {
+        while (c.SDL_PollEvent(&event) == 1) {
             switch (event.type) {
                 c.SDL_QUIT => quit = true,
                 c.SDL_KEYDOWN => {
                     switch (event.key.keysym.sym) {
                         c.SDLK_ESCAPE => quit = true,
+                        c.SDLK_1 => keys[0x01] = true,
+                        c.SDLK_2 => keys[0x02] = true,
+                        c.SDLK_3 => keys[0x03] = true,
+                        c.SDLK_4 => keys[0x0C] = true,
+                        c.SDLK_q => keys[0x04] = true,
+                        c.SDLK_w => keys[0x05] = true,
+                        c.SDLK_e => keys[0x06] = true,
+                        c.SDLK_r => keys[0x0D] = true,
+                        c.SDLK_a => keys[0x07] = true,
+                        c.SDLK_s => keys[0x08] = true,
+                        c.SDLK_d => keys[0x09] = true,
+                        c.SDLK_f => keys[0x0E] = true,
+                        c.SDLK_z => keys[0x0A] = true,
+                        c.SDLK_x => keys[0x00] = true,
+                        c.SDLK_c => keys[0x0B] = true,
+                        c.SDLK_v => keys[0x0F] = true,
+                        else => {},
+                    }
+                },
+                c.SDL_KEYUP => {
+                    switch (event.key.keysym.sym) {
+                        c.SDLK_1 => keys[0x01] = false,
+                        c.SDLK_2 => keys[0x02] = false,
+                        c.SDLK_3 => keys[0x03] = false,
+                        c.SDLK_4 => keys[0x0C] = false,
+                        c.SDLK_q => keys[0x04] = false,
+                        c.SDLK_w => keys[0x05] = false,
+                        c.SDLK_e => keys[0x06] = false,
+                        c.SDLK_r => keys[0x0D] = false,
+                        c.SDLK_a => keys[0x07] = false,
+                        c.SDLK_s => keys[0x08] = false,
+                        c.SDLK_d => keys[0x09] = false,
+                        c.SDLK_f => keys[0x0E] = false,
+                        c.SDLK_z => keys[0x0A] = false,
+                        c.SDLK_x => keys[0x00] = false,
+                        c.SDLK_c => keys[0x0B] = false,
+                        c.SDLK_v => keys[0x0F] = false,
                         else => {},
                     }
                 },

@@ -64,11 +64,14 @@ pub fn main() !void {
     var instance = chip8.Chip8.init(allocator, random);
     try instance.loadRom(rom, cycle);
 
+    var keys: [16]bool = [_]bool{false} ** 16;
+
     mainloop: while (true) {
-        const quit = engine.Event.checkForQuit();
+        const quit = engine.Event.waitKey(&keys);
+        std.debug.print("keys={any}\n", .{keys});
         if (quit) break :mainloop;
 
-        instance.cycle(@intCast(u64, std.time.milliTimestamp()));
+        instance.cycle(@intCast(u64, std.time.milliTimestamp()), keys);
 
         graphics.update(&instance.video);
     }

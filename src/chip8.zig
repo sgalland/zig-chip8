@@ -72,7 +72,7 @@ pub const Chip8 = struct {
     }
 
     // Executes the interpreter at a rate of 60 timers per second. Must in in a loop outside of this function.
-    pub fn cycle(self: *Self, current_timestamp: u64) void {
+    pub fn cycle(self: *Self, current_timestamp: u64, keys: [16]bool) void {
         // Timers decrement at a rate of 60 times per second (every 16.66666666ms).
         // If value of the timer is greater than 0, decrement it
         const cycle_speed = std.time.ms_per_s / 60;
@@ -226,18 +226,15 @@ pub const Chip8 = struct {
                     switch (nn) {
                         // Ex9E - SKP Vx
                         0x9E => {
-                            if (engine.Event.getScancodePressed(self.registers[x])) self.program_counter += 2;
+                            if (keys[self.registers[x]]) {
+                                self.program_counter += 2;
+                            }
                         },
                         // ExA1 - SKNP Vx
                         0xA1 => {
-                            // TODO: Fix me
-                            var keys: [16]bool = [_]bool{false} ** 16;
-                            _ = engine.Event.waitKey(&keys, false);
-                            std.debug.print("keys={any}\n", .{keys});
                             if (!keys[self.registers[x]]) {
                                 self.program_counter += 2;
                             }
-                            // if (!engine.Event.getScancodePressed(self.registers[x])) self.program_counter += 2;
                         },
                         else => unreachable,
                     }
@@ -249,13 +246,9 @@ pub const Chip8 = struct {
                         // Fx0A - LD Vx, K
                         0x0A => {
                             // retrieve the next keypress and store it in VX
-                            var keys: [16]bool = undefined;
-                            _ = engine.Event.waitKey(&keys, true);
-
                             for (keys, 0..) |key_pressed, index| {
                                 if (key_pressed) {
                                     self.registers[x] = @intCast(u8, index);
-                                    break;
                                 }
                             }
                         },
