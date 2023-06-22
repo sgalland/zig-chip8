@@ -58,26 +58,19 @@ pub fn main() !void {
     var graphics = engine.Graphics.init("zCHIP8", chip8.DISPLAY_WIDTH * scale, chip8.DISPLAY_HEIGHT * scale, chip8.DISPLAY_WIDTH, chip8.DISPLAY_HEIGHT);
     defer graphics.free();
 
-    var events = [_]engine.EventType{.{ .@"0" = c.SDL_QUIT, .@"1" = false }};
-    var event_e = engine.Event.init(&events);
+    engine.Event.init();
 
     // Start emulation
-    var instance = chip8.Chip8.init(allocator, random, &event_e);
+    var instance = chip8.Chip8.init(allocator, random);
     try instance.loadRom(rom, cycle);
 
+    var keys: [16]bool = [_]bool{false} ** 16;
+
     mainloop: while (true) {
-        // Process events
-        var event: c.SDL_Event = undefined;
-        while (c.SDL_PollEvent(&event) != 0) {
-            switch (event.type) {
-                c.SDL_QUIT => break :mainloop,
-                else => {},
-            }
-        }
+        const quit = engine.Event.waitKey(&keys);
+        if (quit) break :mainloop;
 
-        if (event_e.getKeyPressed(c.SDL_SCANCODE_ESCAPE)) break :mainloop;
-
-        instance.cycle(@intCast(u64, std.time.milliTimestamp()));
+        instance.cycle(@intCast(u64, std.time.milliTimestamp()), keys);
 
         graphics.update(&instance.video);
     }

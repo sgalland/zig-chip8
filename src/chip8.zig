@@ -52,11 +52,10 @@ pub const Chip8 = struct {
     // Emulator internals
     last_timestamp: u64 = 0,
     last_instruction_timestamp: u64 = 0,
-    event: *engine.Event,
     cycle_speed: u16 = 700,
 
-    pub fn init(allocator: Allocator, random: std.rand.Random, event: *engine.Event) Chip8 {
-        return Chip8{ .allocator = allocator, .random = random, .event = event };
+    pub fn init(allocator: Allocator, random: std.rand.Random) Chip8 {
+        return Chip8{ .allocator = allocator, .random = random };
     }
 
     // Clears memory and loads ROM into memory. Sets the Program Counter to the start of user addressable memory.
@@ -73,7 +72,7 @@ pub const Chip8 = struct {
     }
 
     // Executes the interpreter at a rate of 60 timers per second. Must in in a loop outside of this function.
-    pub fn cycle(self: *Self, current_timestamp: u64) void {
+    pub fn cycle(self: *Self, current_timestamp: u64, keys: [16]bool) void {
         // Timers decrement at a rate of 60 times per second (every 16.66666666ms).
         // If value of the timer is greater than 0, decrement it
         const cycle_speed = std.time.ms_per_s / 60;
@@ -84,7 +83,7 @@ pub const Chip8 = struct {
             self.last_timestamp = current_timestamp;
         }
 
-        const instruction_speed = std.time.ms_per_s / 700;
+        const instruction_speed = std.time.ms_per_s / self.cycle_speed;
         if (current_timestamp - self.last_instruction_timestamp > instruction_speed) {
             self.last_instruction_timestamp = current_timestamp;
 
@@ -210,7 +209,7 @@ pub const Chip8 = struct {
 
                             var loc = (y_pos + row) * DISPLAY_WIDTH + (x_pos + col);
                             if (loc < (DISPLAY_WIDTH * DISPLAY_HEIGHT)) {
-                                const screen_pixel: *u32 = &self.video[(y_pos + row) * DISPLAY_WIDTH + (x_pos + col)];
+                                const screen_pixel: *u32 = &self.video[loc];
 
                                 if (sprite_pixel != 0) {
                                     if (screen_pixel.* == 0xFFFFFFFF) {
@@ -227,11 +226,15 @@ pub const Chip8 = struct {
                     switch (nn) {
                         // Ex9E - SKP Vx
                         0x9E => {
-                            if (self.event.getScancodePressed(self.registers[x])) self.program_counter += 2;
+                            if (keys[self.registers[x]]) {
+                                self.program_counter += 2;
+                            }
                         },
                         // ExA1 - SKNP Vx
                         0xA1 => {
-                            if (!self.event.getScancodePressed(self.registers[x])) self.program_counter += 2;
+                            if (!keys[self.registers[x]]) {
+                                self.program_counter += 2;
+                            }
                         },
                         else => unreachable,
                     }
@@ -243,11 +246,9 @@ pub const Chip8 = struct {
                         // Fx0A - LD Vx, K
                         0x0A => {
                             // retrieve the next keypress and store it in VX
-                            for (0..16) |key| {
-                                const key_code = @intCast(u8, key);
-                                if (self.event.getKeyPressed(key_code)) {
-                                    self.registers[x] = key_code;
-                                    break;
+                            for (keys, 0..) |key_pressed, index| {
+                                if (key_pressed) {
+                                    self.registers[x] = @intCast(u8, index);
                                 }
                             }
                         },
