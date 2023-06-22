@@ -68,7 +68,6 @@ pub fn main() !void {
 
     mainloop: while (true) {
         const quit = engine.Event.waitKey(&keys);
-        std.debug.print("keys={any}\n", .{keys});
         if (quit) break :mainloop;
 
         instance.cycle(@intCast(u64, std.time.milliTimestamp()), keys);

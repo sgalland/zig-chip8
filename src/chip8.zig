@@ -209,7 +209,7 @@ pub const Chip8 = struct {
 
                             var loc = (y_pos + row) * DISPLAY_WIDTH + (x_pos + col);
                             if (loc < (DISPLAY_WIDTH * DISPLAY_HEIGHT)) {
-                                const screen_pixel: *u32 = &self.video[(y_pos + row) * DISPLAY_WIDTH + (x_pos + col)];
+                                const screen_pixel: *u32 = &self.video[loc];
 
                                 if (sprite_pixel != 0) {
                                     if (screen_pixel.* == 0xFFFFFFFF) {
