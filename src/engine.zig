@@ -4,7 +4,7 @@ const c = @cImport({
 });
 
 pub const Graphics = struct {
-    const Self = @This();
+    // const Self = @This();
 
     window: ?*c.SDL_Window,
     surface: [*c]c.SDL_Surface,
@@ -12,7 +12,7 @@ pub const Graphics = struct {
     renderer: ?*c.SDL_Renderer,
     video_pitch: c_int,
 
-    pub fn init(title: [*c]const u8, width: c_int, height: c_int, buffer_width: c_int, buffer_height: c_int) Self {
+    pub fn init(title: [*c]const u8, width: c_int, height: c_int, buffer_width: c_int, buffer_height: c_int) Graphics {
         if (c.SDL_Init(c.SDL_INIT_VIDEO) != 0) {
             std.debug.print("SDL failed to initialize: {s}\n", .{c.SDL_GetError()});
             std.os.exit(0);
@@ -34,14 +34,14 @@ pub const Graphics = struct {
         return graphics;
     }
 
-    pub fn update(self: *Self, buffer: ?*const anyopaque) void {
+    pub fn update(self: Graphics, buffer: ?*const anyopaque) void {
         _ = c.SDL_UpdateTexture(self.texture, null, buffer, self.video_pitch);
         _ = c.SDL_RenderClear(self.renderer);
         _ = c.SDL_RenderCopy(self.renderer, self.texture, null, null);
         c.SDL_RenderPresent(self.renderer);
     }
 
-    pub fn free(self: *Self) void {
+    pub fn free(self: Graphics) void {
         c.SDL_Quit();
         c.SDL_DestroyWindow(self.window);
         c.SDL_FreeSurface(self.surface);

@@ -2,8 +2,6 @@ const std = @import("std");
 const Allocator = std.mem.Allocator;
 
 pub const Arg = struct {
-    const Self = @This();
-
     pub const ArgNode = struct {
         next: ?*ArgNode,
 
@@ -22,7 +20,7 @@ pub const Arg = struct {
     first: ?*ArgNode,
     last: ?*ArgNode,
 
-    pub fn deinit(self: *Self) void {
+    pub fn deinit(self: Arg) void {
         var arg_item = self.first;
         while (arg_item) |arg| {
             if (arg.value_len > 0) self.allocator.free(arg.value);
@@ -90,6 +88,14 @@ pub fn processCommandLineArgs(allocator: Allocator, args: *Arg) !void {
                 node.value_len = default_value.len;
             }
         }
+        // else if (node.valid_values.len > 0) {
+        //     const node_value = node.value;
+        //     const valid_values = node.valid_values;
+
+        //     if (!std.mem.containsAtLeast([]u8, valid_values, 1, node_value)) {
+        //         std.debug.print("\nThe provided value for argument {s} is not valid.\n\n{any}.\n\n", .{ node.arg_prefix, node.valid_values });
+        //     }
+        // }
 
         current_node = current_node.?.next;
     }

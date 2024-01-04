@@ -15,6 +15,7 @@ pub fn main() !void {
     }
 
     // Setup Command Line Arguments
+    var scaling_valid_values = [_][]const u8{ "2", "4", "8", "16" };
     var scaling_arg = cmd.Arg.ArgNode{
         .next = null,
         .name = "scaling",
@@ -23,7 +24,7 @@ pub fn main() !void {
         .required = false,
         .default = "8",
         .default_type = .INT,
-        // .valid_values = .{ "2", "4", "8" },
+        .valid_values = scaling_valid_values[0..],
     };
     var rom_arg = cmd.Arg.ArgNode{
         .next = &scaling_arg,
