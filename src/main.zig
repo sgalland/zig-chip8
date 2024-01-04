@@ -8,7 +8,7 @@ const cmd = @import("cmd_args.zig");
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    var allocator = gpa.allocator();
+    const allocator = gpa.allocator();
     defer {
         const status = gpa.deinit();
         if (status == .leak) std.testing.expect(false) catch @panic("GeneralPurposeAllocator deinit failed");
@@ -70,7 +70,7 @@ pub fn main() !void {
         const quit = engine.Event.waitKey(&keys);
         if (quit) break :mainloop;
 
-        instance.cycle(@intCast(u64, std.time.milliTimestamp()), keys);
+        instance.cycle(@as(u64, @intCast(std.time.milliTimestamp())), keys);
 
         graphics.update(&instance.video);
     }

@@ -2,6 +2,9 @@
 
 This is a Chip8 implementation that I am writing in Zig as a learning project.
 
+## Zig Version
+Updated to use the latest nightly as of 1/4/2024 of Zig (presumably it will be called v0.12).
+
 ## Tested ROMS
 
 | Name                                      | Link                                                                                                                                                          |

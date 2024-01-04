@@ -93,10 +93,10 @@ pub const Chip8 = struct {
 
             // Decode instructions
             const code: u16 = (instruction & 0xF000);
-            const x: u8 = @intCast(u8, @shrExact(instruction & 0x0F00, 8));
-            const y: u8 = @intCast(u8, @shrExact(instruction & 0x00F0, 4));
-            const n: u8 = @intCast(u8, instruction & 0x000F);
-            const nn: u8 = @intCast(u8, instruction & 0x00FF);
+            const x: u8 = @as(u8, @intCast(@shrExact(instruction & 0x0F00, 8)));
+            const y: u8 = @as(u8, @intCast(@shrExact(instruction & 0x00F0, 4)));
+            const n: u8 = @as(u8, @intCast(instruction & 0x000F));
+            const nn: u8 = @as(u8, @intCast(instruction & 0x00FF));
             const nnn: u16 = instruction & 0x0FFF;
 
             // Execute instructions
@@ -207,7 +207,7 @@ pub const Chip8 = struct {
                         for (0..8) |col| {
                             const sprite_pixel: u8 = sprite_byte & std.math.shr(u8, 0x80, col);
 
-                            var loc = (y_pos + row) * DISPLAY_WIDTH + (x_pos + col);
+                            const loc = (y_pos + row) * DISPLAY_WIDTH + (x_pos + col);
                             if (loc < (DISPLAY_WIDTH * DISPLAY_HEIGHT)) {
                                 const screen_pixel: *u32 = &self.video[loc];
 
@@ -248,7 +248,7 @@ pub const Chip8 = struct {
                             // retrieve the next keypress and store it in VX
                             for (keys, 0..) |key_pressed, index| {
                                 if (key_pressed) {
-                                    self.registers[x] = @intCast(u8, index);
+                                    self.registers[x] = @as(u8, @intCast(index));
                                 }
                             }
                         },

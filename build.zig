@@ -26,12 +26,16 @@ pub fn build(b: *std.Build) void {
 
     // Add the SDL library for Windows.
     if (target.getOsTag() == std.Target.Os.Tag.windows) {
-        exe.addIncludePath("libs\\SDL2-2.26.4\\include");
-        exe.addLibraryPath("libs\\SDL2-2.26.4\\lib\\x64");
+        exe.addIncludePath(.{ .path = "libs\\SDL2-2.26.4\\include" });
+        exe.addLibraryPath(.{ .path = "libs\\SDL2-2.26.4\\lib\\x64" });
         b.installBinFile("libs\\SDL2-2.26.4\\lib\\x64\\SDL2.dll", "SDL2.dll");
-        exe.linkSystemLibrary("sdl2");
-        exe.linkLibC();
+    } else {
+        exe.addIncludePath(.{ .path = "/usr/include/SDL2/" });
+        exe.addLibraryPath(.{ .path = "/usr/lib/x86_64-linux-gnu" });
     }
+
+    exe.linkSystemLibrary("sdl2");
+    exe.linkLibC();
 
     // This declares intent for the executable to be installed into the
     // standard location when the user invokes the "install" step (the default
